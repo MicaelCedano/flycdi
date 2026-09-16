@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="FLYCDI — repuestos para celulares al por mayor." />
+    <title>FLYCDI | Repuestos para celulares al por mayor</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="responsive-fixes.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="header-inner shell">
+        <a class="brand" href="#inicio" aria-label="FLYCDI inicio">
+          <img src="assets/flycdi-logo.png" alt="FLYCDI" />
+        </a>
+        <button class="menu-button" aria-label="Abrir menú" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+        <nav class="nav-links" aria-label="Navegación principal">
+          <a class="active" href="#inicio">Inicio</a>
+          <a href="#catalogo">Catálogo</a>
+          <a href="#calidades">Calidades</a>
+          <a href="#como-comprar">Cómo comprar</a>
+          <a href="#contacto">Contacto</a>
+        </nav>
+        <button class="account-button">Acceso mayorista</button>
+      </div>
+    </header>
+
+    <main>
+      <section class="hero shell" id="inicio">
+        <div class="hero-copy">
+          <h1>Repuestos para celulares, <span>listos para tu negocio.</span></h1>
+          <p>411 referencias entre pantallas, cámaras y flex pin, con precios especiales por volumen.</p>
+
+          <form class="finder" id="finder">
+            <label class="search-field">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg>
+              <input id="search" type="search" placeholder="Busca por modelo, pieza o código" />
+            </label>
+            <div class="finder-row">
+              <label>Marca<select id="brand-filter"><option value="all">Todas</option><option>iPhone</option><option>Samsung</option><option>Motorola</option><option>Xiaomi</option><option>Tecno</option><option>Infinix</option><option>Itel</option><option>Huawei</option><option>ZTE</option></select></label>
+              <label>Modelo<select id="model-filter"><option value="all">Todos</option><option>iPhone 13</option><option>Samsung A16 4G</option></select></label>
+              <label>Tipo de pieza<select id="type-filter"><option value="all">Todas</option><option>Pantallas</option><option>Cámaras traseras</option><option>Flex pin de carga</option></select></label>
+              <button class="primary" type="submit">Buscar repuestos</button>
+            </div>
+          </form>
+
+          <div class="hero-actions">
+            <a class="primary large" href="#catalogo">Ver catálogo</a>
+            <button class="secondary large" data-open-cart>Pedido rápido</button>
+          </div>
+
+          <ul class="trust-list" aria-label="Beneficios">
+            <li><strong>411 referencias</strong><span>266 pantallas, 19 cámaras y 126 flex pin.</span></li>
+            <li><strong>Piezas probadas</strong><span>Control de calidad antes del despacho.</span></li>
+            <li><strong>Envíos a toda RD</strong><span>Despachos rápidos para tu taller.</span></li>
+          </ul>
+        </div>
+
+        <div class="hero-visual" aria-label="Pantallas, cámaras y flex pin de carga para celulares">
+          <div class="tech-line line-one"></div>
+          <div class="tech-line line-two"></div>
+          <img src="assets/hero-piezas.png" alt="Componentes de reparación para celulares" />
+          <div class="quality-note"><span></span>Calidad que protege<br />la reputación de tu taller</div>
+        </div>
+      </section>
+
+      <section class="category-strip shell" aria-label="Categorías">
+        <button class="category active" data-category="all"><span>⌕</span>Todo</button>
+        <button class="category" data-category="Pantallas"><span>▯</span>Pantallas</button>
+        <button class="category" data-category="Cámaras traseras"><span>◉</span>Cámaras traseras</button>
+        <button class="category" data-category="Flex pin de carga"><span>⌁</span>Flex pin de carga</button>
+      </section>
+
+      <section class="catalog shell" id="catalogo">
+        <div class="section-heading">
+          <div><p class="section-index">CATÁLOGO / 01</p><h2>Lo más pedido por talleres</h2></div>
+          <p id="result-count">3 destacados de 411 referencias</p>
+        </div>
+        <div class="products" id="product-list">
+          <article class="product-card" data-brand="iPhone" data-model="iPhone 13" data-type="Pantallas" data-name="iPhone 13 SOFT OLED FLYCDI Black C4452">
+            <div class="product-image"><img src="assets/pantalla-iphone-13.png" alt="Pantalla Soft OLED para iPhone 13" /></div>
+            <div class="product-info">
+              <div class="stock"><i></i> En existencia</div>
+              <h3>Pantalla iPhone 13</h3><p class="spec">SOFT OLED · FLYCDI · Black</p><p class="sku">Referencia: C4452</p>
+              <div class="price"><strong>RD$2,900</strong><span>/ unidad</span></div>
+              <div class="tiers"><span>1–9 <b>RD$2,900</b></span><span>10–49 <b>RD$2,670</b></span><span>50+ <b>RD$2,480</b></span></div>
+              <button class="add-button" data-product="Pantalla iPhone 13 — SOFT OLED FLYCDI — C4452" data-p1="2900" data-p2="2670" data-p3="2480">Agregar al pedido <span>+</span></button>
+            </div>
+          </article>
+          <article class="product-card" data-brand="iPhone" data-model="iPhone 13" data-type="Cámaras traseras" data-name="iPhone 13 Cámara trasera">
+            <div class="product-image"><img src="assets/camara-iphone-13.png" alt="Cámara trasera para iPhone 13" /></div>
+            <div class="product-info">
+              <div class="stock"><i></i> En existencia</div>
+              <h3>Cámara trasera iPhone 13</h3><p class="spec">Módulo de cámara trasera</p><p class="sku">Referencia no indicada</p>
+              <div class="price"><strong>RD$570</strong><span>/ unidad</span></div>
+              <div class="tiers"><span>1–9 <b>RD$570</b></span><span>10–49 <b>RD$540</b></span><span>50+ <b>RD$500</b></span></div>
+              <button class="add-button" data-product="Cámara trasera iPhone 13" data-p1="570" data-p2="540" data-p3="500">Agregar al pedido <span>+</span></button>
+            </div>
+          </article>
+          <article class="product-card" data-brand="Samsung" data-model="Samsung A16 4G" data-type="Flex pin de carga" data-name="Samsung A16 4G Flex pin de carga">
+            <div class="product-image"><img src="assets/flex-samsung-a15.png" alt="Flex pin de carga para Samsung A16 4G" /></div>
+            <div class="product-info">
+              <div class="stock"><i></i> En existencia</div>
+              <h3>Flex pin Samsung A16 4G</h3><p class="spec">Flex pin de carga</p><p class="sku">Referencia no indicada</p>
+              <div class="price"><strong>RD$135</strong><span>/ unidad</span></div>
+              <div class="tiers"><span>1–9 <b>RD$135</b></span><span>10–49 <b>RD$105</b></span><span>50+ <b>RD$85</b></span></div>
+              <button class="add-button" data-product="Flex pin de carga Samsung A16 4G" data-p1="135" data-p2="105" data-p3="85">Agregar al pedido <span>+</span></button>
+            </div>
+          </article>
+        </div>
+        <div class="empty-state" id="empty-state" hidden>No encontramos esa pieza entre los productos destacados. El catálogo completo contiene 411 referencias.</div>
+      </section>
+
+      <section class="quality-section" id="calidades">
+        <div class="shell quality-grid">
+          <div class="quality-intro"><p class="section-index light">CALIDADES / 02</p><h2>Elige la pantalla según tu cliente.</h2><p>No todas las reparaciones necesitan la misma pieza. Compara margen, imagen y durabilidad antes de ordenar.</p></div>
+          <div class="quality-table">
+            <div class="quality-row heading"><span>Calidad</span><span>Ideal para</span><span>Precio</span></div>
+            <div class="quality-row"><span><b>LCD / HD+</b><small>Línea económica</small></span><span>Reparaciones de volumen</span><strong>$</strong></div>
+            <div class="quality-row featured"><span><b>Soft OLED</b><small>Flexible y delgada</small></span><span>Calidad premium</span><strong>$$$</strong></div>
+            <div class="quality-row"><span><b>OLED ORG</b><small>Calidad original</small></span><span>Reparaciones exigentes</span><strong>$$$$</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="steps shell" id="como-comprar">
+        <div class="section-heading"><div><p class="section-index">PROCESO / 03</p><h2>Del catálogo a tu taller.</h2></div></div>
+        <div class="step-list">
+          <article><span>01</span><h3>Arma tu lista</h3><p>Busca por modelo, selecciona calidad y agrega las cantidades que necesitas.</p></article>
+          <article><span>02</span><h3>Recibe tu precio</h3><p>El descuento cambia automáticamente según el volumen de cada referencia.</p></article>
+          <article><span>03</span><h3>Confirma por WhatsApp</h3><p>Un asesor valida inventario, pago y despacho antes de cerrar el pedido.</p></article>
+        </div>
+      </section>
+
+      <section class="cta-section" id="contacto">
+        <div class="shell cta-inner">
+          <div><h2>¿Vas a surtir tu taller?</h2><p>Prepara un pedido mixto y recibe una cotización mayorista.</p></div>
+          <button class="white-button" data-open-cart>Crear pedido rápido <span>→</span></button>
+        </div>
+      </section>
+    </main>
+
+    <footer><div class="shell footer-inner"><img src="assets/flycdi-logo.png" alt="FLYCDI" /><p>Repuestos para celulares al por mayor · República Dominicana</p><p>© 2026 FLYCDI</p></div></footer>
+
+    <aside class="cart-drawer" id="cart" aria-hidden="true">
+      <div class="drawer-head"><div><small>PEDIDO MAYORISTA</small><h2>Tu cotización</h2></div><button id="close-cart" aria-label="Cerrar">×</button></div>
+      <div class="cart-items" id="cart-items"><p class="cart-empty">Agrega piezas del catálogo para comenzar.</p></div>
+      <div class="drawer-total"><span>Total estimado</span><strong id="cart-total">US$0.00</strong><small>El inventario y precio final se confirman con un asesor.</small><button id="whatsapp-button" disabled>Enviar pedido por WhatsApp</button></div>
+    </aside>
+    <div class="overlay" id="overlay"></div>
+    <div class="toast" id="toast">Pieza agregada al pedido</div>
+    <script src="script.js"></script>
+  </body>
+</html>
