@@ -69,7 +69,7 @@ export function useLocalAccount() {
     async register(input: { name: string; username: string; shopName: string; phone: string; email: string; password: string }) {
       const { data, error } = await supabase.auth.signUp({ email: input.email.trim().toLowerCase(), password: input.password, options: { data: { name: input.name.trim(), username: input.username.trim().toLowerCase(), shop_name: input.shopName.trim(), phone: input.phone.trim() } } });
       if (error) throw new Error(error.message);
-      if (!data.session) throw new Error("Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
+      if (!data.session) throw new Error("Tu registro quedó pendiente de revisión manual. El equipo habilitará el acceso después de revisar tus datos.");
       await loadAccount(data.user);
     },
     async login(username: string, password: string) {
