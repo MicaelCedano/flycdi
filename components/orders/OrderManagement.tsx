@@ -6,7 +6,7 @@ import { CheckCircle2, Clock3, LockKeyhole, PackageCheck, Truck } from "lucide-r
 import { useLocalAccount } from "@/components/account/useLocalAccount";
 import { money } from "@/lib/catalog";
 import {
-  ORDER_STATUSES,
+  ORDER_STATUS_OPTIONS,
   statusFromDatabase,
   statusToDatabase,
   type ManagedOrder,
@@ -23,7 +23,7 @@ export function OrderManagement() {
   const [orders, setOrders] = useState<ManagedOrder[]>([]);
   const [notice, setNotice] = useState("");
   const canView = account?.role === "seller" || account?.role === "admin";
-  const canManage = account?.role === "seller";
+  const canManage = account?.role === "seller" || account?.role === "admin";
 
   useEffect(() => {
     if (!ready || !canView) return;
@@ -36,8 +36,8 @@ export function OrderManagement() {
   const counts = useMemo(() => ({
     pending: orders.filter((order) => order.status === "Pendiente de confirmación").length,
     processing: orders.filter((order) => processingStatuses.includes(order.status)).length,
-    ready: orders.filter((order) => order.status === "Listo para despacho").length,
-    dispatched: orders.filter((order) => order.status === "Despachado").length,
+    ready: orders.filter((order) => ["Listo para despacho", "Listo para recoger", "Listo para enviar"].includes(order.status)).length,
+    dispatched: orders.filter((order) => ["Despachado", "En camino", "Entregado"].includes(order.status)).length,
   }), [orders]);
 
   async function changeStatus(orderId: string, status: OrderStatus) {
@@ -60,7 +60,7 @@ export function OrderManagement() {
 
   return <main className="admin-shell sales-shell">
     <header className="admin-header sales-header">
-      <div><p>FLYCDI / {canManage ? "VENTAS" : "SUPERVISIÓN"}</p><h1>Gestión de pedidos</h1><span>{canManage ? "Actualiza cada pedido hasta completar su despacho." : "Vista administrativa de todos los pedidos."}</span></div>
+      <div><p>FLYCDI / GESTIÓN DE PEDIDOS</p><h1>Gestión de pedidos</h1><span>Actualiza el avance; el cliente lo verá en el seguimiento de su cuenta.</span></div>
       <div className="admin-header-actions">{account.role === "admin" ? <Link href="/admin">Catálogo admin</Link> : null}<Link href="/">Ver tienda</Link></div>
     </header>
 
@@ -71,12 +71,12 @@ export function OrderManagement() {
       <article><Truck /><strong>{counts.dispatched}</strong><span>Despachados</span></article>
     </section>
 
-    {!orders.length ? <section className="sales-empty"><PackageCheck /><h2>No hay pedidos todavía</h2><p>Los pedidos creados por técnicos en este dispositivo aparecerán aquí.</p></section> : <section className="sales-orders" aria-label="Pedidos recibidos">
+    {!orders.length ? <section className="sales-empty"><PackageCheck /><h2>No hay pedidos todavía</h2><p>Los pedidos creados por técnicos aparecerán aquí.</p></section> : <section className="sales-orders" aria-label="Pedidos recibidos">
       {orders.map((order) => <article className="sales-order" key={order.id}>
         <div className="sales-order-head"><div><strong>{order.id}</strong><span>{new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div><span className="order-status">{order.status}</span></div>
         <div className="sales-customer"><div><small>CLIENTE TÉCNICO</small><strong>{order.customer?.name ?? "Cliente no disponible"}</strong><span>{order.customer?.shopName ?? "—"}</span></div><div><span>{order.customer?.phone ?? "—"}</span><span>{order.customer?.email ?? "—"}</span></div></div>
         <div className="sales-items">{order.items.map((item) => <div key={`${order.id}-${item.productId}`}><span>{item.quantity} × {item.name}</span><small>{item.reference || "Sin referencia"}</small><strong>{money(item.unitPrice * item.quantity)}</strong></div>)}</div>
-        <div className="sales-order-foot"><div><span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span><strong>{money(order.total)}</strong></div>{canManage ? <label>Estado del pedido<select value={order.status} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{ORDER_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label> : <div className="supervision-note">Solo el vendedor asignado procesa el pedido.</div>}</div>
+        <div className="sales-order-foot"><div><span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span><strong>{money(order.total)}</strong></div>{canManage ? <label>Estado del pedido<select value={order.status} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{ORDER_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></label> : <div className="supervision-note">Solo ventas y administración pueden actualizarlo.</div>}</div>
         {order.managedByName ? <small className="managed-by">Última gestión: {order.managedByName}</small> : null}
       </article>)}
     </section>}

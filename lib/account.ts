@@ -19,13 +19,21 @@ export type OrderItem = {
   unitPrice: number;
 };
 
-export const ORDER_STATUSES = [
+export const ORDER_STATUS_OPTIONS = [
   "Pendiente de confirmación",
   "Confirmado",
   "Preparando pedido",
+  "Listo para recoger",
+  "Listo para enviar",
+  "En camino",
+  "Entregado",
+  "Cancelado",
+] as const;
+
+export const ORDER_STATUSES = [
+  ...ORDER_STATUS_OPTIONS,
   "Listo para despacho",
   "Despachado",
-  "Cancelado",
 ] as const;
 
 export type OrderStatus = (typeof ORDER_STATUSES)[number];
@@ -51,9 +59,13 @@ export const statusToDatabase = {
   "Pendiente de confirmación": "pending",
   Confirmado: "confirmed",
   "Preparando pedido": "preparing",
+  "Listo para recoger": "ready_pickup",
+  "Listo para enviar": "ready_shipment",
+  "En camino": "in_transit",
+  Entregado: "delivered",
+  Cancelado: "cancelled",
   "Listo para despacho": "ready",
   Despachado: "dispatched",
-  Cancelado: "cancelled",
 } as const;
 
 export const statusFromDatabase = Object.fromEntries(

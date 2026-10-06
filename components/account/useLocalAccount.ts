@@ -43,6 +43,10 @@ export function useLocalAccount() {
     setOrders(((data ?? []) as OrderRow[]).map(mapOrder));
   }, [supabase]);
 
+  const refreshOrders = useCallback(async () => {
+    if (account?.role === "technician") await loadOrders(account.id);
+  }, [account, loadOrders]);
+
   const loadAccount = useCallback(async (user: User | null) => {
     if (!user) { setAccount(null); setOrders([]); setReady(true); return; }
     const { data, error } = await supabase.from("profiles").select("id, username, role, approved, name, shop_name, phone, created_at").eq("id", user.id).single();
@@ -74,6 +78,7 @@ export function useLocalAccount() {
     account,
     orders,
     ready,
+    refreshOrders,
     async register(input: { name: string; username: string; shopName: string; phone: string; email: string; password: string }) {
       const { data, error } = await supabase.auth.signUp({ email: input.email.trim().toLowerCase(), password: input.password, options: { data: { name: input.name.trim(), username: input.username.trim().toLowerCase(), shop_name: input.shopName.trim(), phone: input.phone.trim() } } });
       if (error) throw new Error(error.message);
