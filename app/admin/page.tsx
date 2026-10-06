@@ -19,7 +19,7 @@ export default function AdminPage() {
         <div><p>FLYCDI / ADMINISTRACIÓN</p><h1>Disponibilidad del catálogo</h1><span className="admin-subtitle">Todas las referencias están disponibles por defecto. Cambia solo las que ya no estén disponibles.</span></div>
         <div className="admin-header-actions"><Link href="/ventas">Supervisar pedidos</Link><Link href="/">Ver tienda</Link></div>
       </header>
-      {catalogLoading ? <div className="catalog-loading" aria-label="Cargando catálogo" /> : catalogError ? <p role="alert">No se pudo conectar con el catálogo de Supabase.</p> : null}
+      {catalogLoading ? <div className="catalog-loading" aria-label="Cargando catálogo" /> : catalogError ? <p role="alert">No se pudo cargar el catálogo. Inténtalo de nuevo.</p> : null}
       <ProductCreator products={products} account={account} />
       <CatalogTable products={products} account={account} />
     </main>
