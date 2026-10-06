@@ -10,12 +10,12 @@ import {
   type TechnicianOrder,
 } from "@/lib/account";
 
-type ProfileRow = { id: string; role: AccountProfile["role"]; name: string; shop_name: string; phone: string; created_at: string };
+type ProfileRow = { id: string; username: string; role: AccountProfile["role"]; name: string; shop_name: string; phone: string; created_at: string };
 type ItemRow = { product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string };
 type OrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; created_at: string; updated_at: string; order_items: ItemRow[] };
 
 function mapAccount(user: User, profile: ProfileRow): AccountProfile {
-  return { id: profile.id, role: profile.role, name: profile.name, shopName: profile.shop_name, phone: profile.phone, email: user.email ?? "", createdAt: profile.created_at };
+  return { id: profile.id, username: profile.username, role: profile.role, name: profile.name, shopName: profile.shop_name, phone: profile.phone, email: user.email ?? "", createdAt: profile.created_at };
 }
 
 function mapOrder(row: OrderRow): TechnicianOrder {
@@ -45,7 +45,7 @@ export function useLocalAccount() {
 
   const loadAccount = useCallback(async (user: User | null) => {
     if (!user) { setAccount(null); setOrders([]); setReady(true); return; }
-    const { data, error } = await supabase.from("profiles").select("id, role, name, shop_name, phone, created_at").eq("id", user.id).single();
+    const { data, error } = await supabase.from("profiles").select("id, username, role, name, shop_name, phone, created_at").eq("id", user.id).single();
     if (error) throw error;
     const profile = mapAccount(user, data as ProfileRow);
     setAccount(profile);
@@ -66,15 +66,22 @@ export function useLocalAccount() {
     account,
     orders,
     ready,
-    async register(input: { name: string; shopName: string; phone: string; email: string; password: string }) {
-      const { data, error } = await supabase.auth.signUp({ email: input.email.trim().toLowerCase(), password: input.password, options: { data: { name: input.name.trim(), shop_name: input.shopName.trim(), phone: input.phone.trim() } } });
+    async register(input: { name: string; username: string; shopName: string; phone: string; email: string; password: string }) {
+      const { data, error } = await supabase.auth.signUp({ email: input.email.trim().toLowerCase(), password: input.password, options: { data: { name: input.name.trim(), username: input.username.trim().toLowerCase(), shop_name: input.shopName.trim(), phone: input.phone.trim() } } });
       if (error) throw new Error(error.message);
       if (!data.session) throw new Error("Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
       await loadAccount(data.user);
     },
-    async login(email: string, password: string) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
-      if (error) throw new Error("Correo o contraseña incorrectos.");
+    async login(username: string, password: string) {
+      const response = await fetch("/api/auth/username-login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: username.trim().toLowerCase(), password }),
+      });
+      const result = await response.json().catch(() => null) as { error?: string } | null;
+      if (!response.ok) throw new Error(result?.error ?? "Usuario o contraseña incorrectos.");
+      const { data, error } = await supabase.auth.getUser();
+      if (error || !data.user) throw new Error("Usuario o contraseña incorrectos.");
       await loadAccount(data.user);
     },
     async logout() {

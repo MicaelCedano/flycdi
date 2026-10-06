@@ -2,6 +2,7 @@ export type AccountRole = "admin" | "seller" | "technician";
 
 export type AccountProfile = {
   id: string;
+  username: string;
   role: AccountRole;
   name: string;
   shopName: string;
