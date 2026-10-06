@@ -20,14 +20,18 @@ export function AccountDrawer({ open, account, orders, onClose, onRegister, onLo
 }) {
   const [mode, setMode] = useState<"register" | "login">("login");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault(); setError(""); setBusy(true);
-    const data = new FormData(event.currentTarget);
+    event.preventDefault(); setError(""); setNotice(""); setBusy(true);
+    const form = event.currentTarget;
+    const data = new FormData(form);
     try {
       if (mode === "register") {
         await onRegister({ name: String(data.get("name")), username: String(data.get("username")), shopName: String(data.get("shopName")), phone: String(data.get("phone")), email: String(data.get("email")), password: String(data.get("password")) });
+        setNotice("Recibimos tu solicitud. El equipo revisará tus datos y habilitará tu cuenta personalmente.");
+        form.reset();
       } else {
         await onLogin(String(data.get("username")), String(data.get("password")));
       }
@@ -47,12 +51,13 @@ export function AccountDrawer({ open, account, orders, onClose, onRegister, onLo
       <button className="logout-button" onClick={onLogout}><LogOut /> Cerrar sesión</button>
     </div> : <div className="account-content">
       <div className="local-mode"><ShieldCheck /><div><strong>Acceso seguro FLYCDI</strong><span>Tu cuenta, catálogo y pedidos están protegidos.</span></div></div>
-      <div className="auth-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>Iniciar sesión</button><button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>Crear cuenta</button></div>
+      <div className="auth-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); setNotice(""); }}>Iniciar sesión</button><button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); setNotice(""); }}>Crear cuenta</button></div>
       <form className="auth-form" onSubmit={submit}>
         {mode === "register" ? <><label>Nombre completo<input required name="name" autoComplete="name" placeholder="Ej. Carlos Rodríguez" /></label><label>Nombre de usuario<input required name="username" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} minLength={3} maxLength={30} pattern="[A-Za-z0-9][A-Za-z0-9._-]{2,29}" title="Usa entre 3 y 30 letras, números, puntos, guiones o guiones bajos." placeholder="admin" /></label><label>Nombre del taller<input required name="shopName" placeholder="Ej. Taller Móvil CR" /></label><label>WhatsApp<input required name="phone" type="tel" autoComplete="tel" placeholder="809 555 0000" /></label><label>Correo electrónico de contacto<input required name="email" type="email" autoComplete="email" placeholder="tu@correo.com" /><small>El equipo revisará tus datos personalmente.</small></label></> : null}
         {mode === "login" ? <label>Nombre de usuario<input required name="username" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder="Tu nombre de usuario" /></label> : null}
         <label>Contraseña<input required name="password" type="password" minLength={6} autoComplete={mode === "register" ? "new-password" : "current-password"} placeholder="Mínimo 6 caracteres" /></label>
         {error ? <p className="auth-error" role="alert">{error}</p> : null}
+        {notice ? <p className="auth-notice" role="status">{notice}</p> : null}
         <button className="primary auth-submit" disabled={busy}>{busy ? "Procesando…" : mode === "register" ? "Registrarme como técnico" : "Entrar a mi cuenta"}</button>
       </form>
     </div>}

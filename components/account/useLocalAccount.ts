@@ -10,7 +10,7 @@ import {
   type TechnicianOrder,
 } from "@/lib/account";
 
-type ProfileRow = { id: string; username: string; role: AccountProfile["role"]; name: string; shop_name: string; phone: string; created_at: string };
+type ProfileRow = { id: string; username: string; role: AccountProfile["role"]; approved: boolean; name: string; shop_name: string; phone: string; created_at: string };
 type ItemRow = { product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string };
 type OrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; created_at: string; updated_at: string; order_items: ItemRow[] };
 
@@ -45,9 +45,17 @@ export function useLocalAccount() {
 
   const loadAccount = useCallback(async (user: User | null) => {
     if (!user) { setAccount(null); setOrders([]); setReady(true); return; }
-    const { data, error } = await supabase.from("profiles").select("id, username, role, name, shop_name, phone, created_at").eq("id", user.id).single();
+    const { data, error } = await supabase.from("profiles").select("id, username, role, approved, name, shop_name, phone, created_at").eq("id", user.id).single();
     if (error) throw error;
-    const profile = mapAccount(user, data as ProfileRow);
+    const row = data as ProfileRow;
+    if (!row.approved) {
+      setAccount(null);
+      setOrders([]);
+      setReady(true);
+      await supabase.auth.signOut();
+      return;
+    }
+    const profile = mapAccount(user, row);
     setAccount(profile);
     if (profile.role === "technician") await loadOrders(profile.id);
     else setOrders([]);
@@ -69,8 +77,8 @@ export function useLocalAccount() {
     async register(input: { name: string; username: string; shopName: string; phone: string; email: string; password: string }) {
       const { data, error } = await supabase.auth.signUp({ email: input.email.trim().toLowerCase(), password: input.password, options: { data: { name: input.name.trim(), username: input.username.trim().toLowerCase(), shop_name: input.shopName.trim(), phone: input.phone.trim() } } });
       if (error) throw new Error(error.message);
-      if (!data.session) throw new Error("Tu registro quedó pendiente de revisión manual. El equipo habilitará el acceso después de revisar tus datos.");
-      await loadAccount(data.user);
+      if (!data.session) throw new Error("No se pudo completar el registro. Inténtalo de nuevo más tarde.");
+      await supabase.auth.signOut();
     },
     async login(username: string, password: string) {
       const response = await fetch("/api/auth/username-login", {

@@ -34,7 +34,7 @@ export async function POST(request: Request) {
   });
   const { data: profile, error: profileError } = await admin
     .from("profiles")
-    .select("id")
+    .select("id, approved")
     .eq("username", username)
     .maybeSingle();
 
@@ -54,6 +54,10 @@ export async function POST(request: Request) {
   const supabase = await createClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
   if (!profile || error || !data.user) return invalidCredentials();
+  if (!profile.approved) {
+    await supabase.auth.signOut();
+    return NextResponse.json({ error: "Tu cuenta está pendiente de revisión por el equipo." }, { status: 403 });
+  }
 
   return NextResponse.json({ ok: true });
 }
