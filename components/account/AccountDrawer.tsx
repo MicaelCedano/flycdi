@@ -4,14 +4,14 @@ import Link from "next/link";
 import { useState, type FormEvent } from "react";
 import { LayoutDashboard, LogOut, PackageCheck, ShieldCheck, UserRound, X } from "lucide-react";
 import { money } from "@/lib/catalog";
-import type { TechnicianAccount, TechnicianOrder } from "@/lib/local-account";
+import type { AccountProfile, TechnicianOrder } from "@/lib/account";
 
 type RegisterInput = { name: string; shopName: string; phone: string; email: string; password: string };
 const roleLabels = { admin: "Administrador", seller: "Vendedor", technician: "Cliente técnico" } as const;
 
 export function AccountDrawer({ open, account, orders, onClose, onRegister, onLogin, onLogout }: {
   open: boolean;
-  account: TechnicianAccount | null;
+  account: AccountProfile | null;
   orders: TechnicianOrder[];
   onClose: () => void;
   onRegister: (input: RegisterInput) => Promise<void>;
@@ -46,7 +46,7 @@ export function AccountDrawer({ open, account, orders, onClose, onRegister, onLo
       <div className="order-history">{orders.length ? orders.map((order) => <article key={order.id}><div><strong>{order.id}</strong><span>{new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div><div><span><PackageCheck /> {order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span><strong>{money(order.total)}</strong></div><small>{order.status}</small></article>) : <div className="orders-empty"><PackageCheck /><strong>Todavía no tienes pedidos</strong><span>Arma tu carrito y confirma el primero.</span></div>}</div></> : null}
       <button className="logout-button" onClick={onLogout}><LogOut /> Cerrar sesión</button>
     </div> : <div className="account-content">
-      <div className="local-mode"><ShieldCheck /><div><strong>Modo local de desarrollo</strong><span>La cuenta y los pedidos se guardan únicamente en este dispositivo.</span></div></div>
+      <div className="local-mode"><ShieldCheck /><div><strong>Acceso seguro FLYCDI</strong><span>Tu cuenta, catálogo y pedidos están protegidos con Supabase.</span></div></div>
       <div className="auth-tabs"><button className={mode === "login" ? "active" : ""} onClick={() => { setMode("login"); setError(""); }}>Iniciar sesión</button><button className={mode === "register" ? "active" : ""} onClick={() => { setMode("register"); setError(""); }}>Crear cuenta</button></div>
       <form className="auth-form" onSubmit={submit}>
         {mode === "register" ? <><label>Nombre completo<input required name="name" autoComplete="name" placeholder="Ej. Carlos Rodríguez" /></label><label>Nombre del taller<input required name="shopName" placeholder="Ej. Taller Móvil CR" /></label><label>WhatsApp<input required name="phone" type="tel" autoComplete="tel" placeholder="809 555 0000" /></label></> : null}

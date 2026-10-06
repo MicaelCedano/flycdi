@@ -22,7 +22,7 @@ const imageByCategory: Record<Product["category"], string> = {
   "Flex pin de carga": "/assets/flex-samsung-a15.png",
 };
 
-export function Storefront({ products: baseProducts }: { products: Product[] }) {
+export function Storefront() {
   const [filters, setFilters] = useState<Filters>({ search: "", brand: ALL, model: ALL, category: ALL });
   const [applied, setApplied] = useState(filters);
   const [visible, setVisible] = useState(PAGE_SIZE);
@@ -32,7 +32,7 @@ export function Storefront({ products: baseProducts }: { products: Product[] }) 
   const [menuOpen, setMenuOpen] = useState(false);
   const [orderNotice, setOrderNotice] = useState("");
   const localAccount = useLocalAccount();
-  const { products } = useLocalCatalog(baseProducts);
+  const { products, loading: catalogLoading, error: catalogError } = useLocalCatalog();
   const { inventory } = useLocalInventory();
   const hasCatalogAccess = localAccount.ready && Boolean(localAccount.account);
   const canPlaceOrders = localAccount.account?.role === "technician";
@@ -88,11 +88,11 @@ export function Storefront({ products: baseProducts }: { products: Product[] }) 
     if (!hasCatalogAccess) { openAccount(); return; }
     document.querySelector("#catalogo")?.scrollIntoView({ behavior: "smooth" });
   };
-  const confirmOrder = () => {
+  const confirmOrder = async () => {
     if (!localAccount.account) { openAccount(); return; }
     if (!canPlaceOrders) { setOrderNotice("Solo los clientes técnicos pueden crear pedidos."); return; }
     try {
-      const order = localAccount.saveOrder(cart.map(({ product, quantity }) => ({ productId: product.id, name: productName(product), reference: product.reference, quantity, unitPrice: tierPrice(product, quantity) })), total);
+      const order = await localAccount.saveOrder(cart.map(({ product, quantity }) => ({ productId: product.id, name: productName(product), reference: product.reference, quantity, unitPrice: tierPrice(product, quantity) })), total);
       setCart([]); setCartOpen(false); setOrderNotice(`Pedido ${order.id} guardado correctamente.`);
     } catch (error) {
       setOrderNotice(error instanceof Error ? error.message : "No se pudo confirmar el pedido.");
@@ -146,6 +146,7 @@ export function Storefront({ products: baseProducts }: { products: Product[] }) 
         <section className="catalog shell" id="catalogo">
           {!localAccount.ready ? <div className="catalog-loading" aria-label="Comprobando acceso" /> : hasCatalogAccess ? <>
             <div className="mobile-catalog-head"><div><span>CATÁLOGO PRIVADO</span><strong>Hola, {localAccount.account?.name.split(" ")[0]}</strong></div>{canPlaceOrders ? <button onClick={() => setCartOpen(true)}><ShoppingBag /><span>{cart.reduce((n, line) => n + line.quantity, 0)}</span></button> : null}</div>
+            {catalogLoading ? <div className="catalog-loading" aria-label="Cargando inventario" /> : catalogError ? <div className="empty-state" role="alert">No se pudo conectar con el catálogo. Intenta de nuevo en unos segundos.</div> : <>
             <form className="mobile-catalog-filters" onSubmit={(event) => { event.preventDefault(); applyFilters(); }}>
               <label className="search-field"><Search aria-hidden="true" /><input type="search" placeholder="Modelo, pieza o código" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></label>
               <div><label>Marca<select value={filters.brand} onChange={(e) => setFilters({ ...filters, brand: e.target.value, model: ALL })}><option>{ALL}</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label><label>Modelo<select value={filters.model} onChange={(e) => setFilters({ ...filters, model: e.target.value })}><option>{ALL}</option>{models.map((model) => <option key={model}>{model}</option>)}</select></label></div>
@@ -155,8 +156,10 @@ export function Storefront({ products: baseProducts }: { products: Product[] }) 
             <div className="products">
               {filtered.slice(0, visible).map((product) => <ProductCard key={product.id} product={product} available={isProductAvailable(inventory, product.id)} canOrder={canPlaceOrders} onAdd={() => addToCart(product)} />)}
             </div>
-            {!filtered.length && <div className="empty-state">No encontramos piezas con esos filtros. Prueba otro modelo, tipo o referencia.</div>}
+            {!products.length && <div className="empty-state">El catálogo todavía no tiene productos cargados.</div>}
+            {products.length > 0 && !filtered.length && <div className="empty-state">No encontramos piezas con esos filtros. Prueba otro modelo, tipo o referencia.</div>}
             {visible < filtered.length && <button className="load-more" onClick={() => setVisible((n) => n + PAGE_SIZE)}>Ver más productos <ChevronRight size={18} /></button>}
+            </>}
           </> : <div className="catalog-lock"><div className="catalog-lock-icon"><LockKeyhole /></div><p>CATÁLOGO PRIVADO</p><h2>Inicia sesión para ver productos y precios</h2><span>El inventario mayorista está reservado para técnicos registrados y talleres autorizados.</span><button className="primary large" onClick={openAccount}>Iniciar sesión</button><small>¿Eres nuevo? También puedes crear tu cuenta desde el acceso.</small></div>}
         </section>
 

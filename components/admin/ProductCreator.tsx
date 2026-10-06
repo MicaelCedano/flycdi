@@ -3,31 +3,38 @@
 import { useState, type FormEvent } from "react";
 import { PackagePlus, X } from "lucide-react";
 import type { Product } from "@/lib/catalog";
-import type { TechnicianAccount } from "@/lib/local-account";
-import { createCustomProduct } from "@/lib/local-catalog";
+import type { AccountProfile } from "@/lib/account";
+import { createClient } from "@/lib/supabase/client";
 
-export function ProductCreator({ account, products }: { account: TechnicianAccount; products: Product[] }) {
+export function ProductCreator({ account, products }: { account: AccountProfile; products: Product[] }) {
   const [open, setOpen] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
-  function submit(event: FormEvent<HTMLFormElement>) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     const form = event.currentTarget;
     const data = new FormData(form);
     try {
-      const product = createCustomProduct({
+      const product = {
+        id: `custom-${crypto.randomUUID()}`,
         category: String(data.get("category")) as Product["category"],
-        brand: String(data.get("brand")),
-        model: String(data.get("model")),
-        productType: String(data.get("productType")),
-        variant: String(data.get("variant")),
-        reference: String(data.get("reference")),
+        brand: String(data.get("brand")).trim(),
+        model: String(data.get("model")).trim(),
+        productType: String(data.get("productType")).trim(),
+        variant: String(data.get("variant")).trim(),
+        reference: String(data.get("reference")).trim().toUpperCase(),
         price1: Number(data.get("price1")),
         price2: Number(data.get("price2")),
         price3: Number(data.get("price3")),
-      }, account, products);
+      };
+      if (!product.brand || !product.model || !product.productType || !product.reference) throw new Error("Completa marca, modelo, tipo y referencia.");
+      if (product.price2 > product.price1 || product.price3 > product.price2) throw new Error("Los precios por volumen no pueden ser mayores que el precio anterior.");
+      if (products.some((candidate) => candidate.reference.trim().toUpperCase() === product.reference)) throw new Error(`Ya existe un producto con la referencia ${product.reference}.`);
+      const { error: insertError } = await createClient().from("products").insert({ id: product.id, category: product.category, brand: product.brand, model: product.model, product_type: product.productType, variant: product.variant, reference: product.reference, price_1: product.price1, price_2: product.price2, price_3: product.price3, available: true, active: true });
+      if (insertError) throw new Error(insertError.message);
+      window.dispatchEvent(new CustomEvent("flycdi:catalog-changed"));
       form.reset();
       setNotice(`${product.brand} ${product.model} fue agregado al catálogo.`);
       setOpen(false);

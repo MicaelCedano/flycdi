@@ -4,19 +4,20 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import type { Product } from "@/lib/catalog";
 import { money } from "@/lib/catalog";
-import type { TechnicianAccount } from "@/lib/local-account";
-import { isProductAvailable, saveInventoryAvailability } from "@/lib/local-inventory";
+import type { AccountProfile } from "@/lib/account";
+import { isProductAvailable } from "@/lib/local-inventory";
 import { useLocalInventory } from "@/components/inventory/useLocalInventory";
+import { createClient } from "@/lib/supabase/client";
 
 type Availability = "all" | "available" | "unavailable";
 
-export function CatalogTable({ products, account }: { products: Product[]; account: TechnicianAccount }) {
+export function CatalogTable({ products, account }: { products: Product[]; account: AccountProfile }) {
   const [query, setQuery] = useState("");
   const [availability, setAvailability] = useState<Availability>("all");
   const [drafts, setDrafts] = useState<Record<string, boolean>>({});
   const [notice, setNotice] = useState("");
   const deferred = useDeferredValue(query.toLocaleLowerCase("es"));
-  const { inventory } = useLocalInventory();
+  const { inventory, refresh } = useLocalInventory();
 
   const metrics = useMemo(() => products.reduce((result, product) => {
     if (isProductAvailable(inventory, product.id)) result.available += 1;
@@ -33,10 +34,13 @@ export function CatalogTable({ products, account }: { products: Product[]; accou
     return matchesAvailability && haystack.includes(deferred);
   }), [products, inventory, availability, deferred]);
 
-  const save = (product: Product) => {
+  const save = async (product: Product) => {
     const available = drafts[product.id] ?? isProductAvailable(inventory, product.id);
     try {
-      saveInventoryAvailability(product.id, available, account);
+      if (account.role !== "admin") throw new Error("Solo un administrador puede cambiar el inventario.");
+      const { error } = await createClient().from("products").update({ available }).eq("id", product.id);
+      if (error) throw error;
+      await refresh();
       setNotice(`${product.brand} ${product.model}: marcado como ${available ? "disponible" : "no disponible"}.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo actualizar la disponibilidad.");

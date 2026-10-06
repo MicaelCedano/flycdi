@@ -9,6 +9,7 @@ export type Product = {
   price1: number;
   price2: number;
   price3: number;
+  available?: boolean;
 };
 
 export const tierPrice = (product: Product, quantity: number) =>

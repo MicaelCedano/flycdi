@@ -1,55 +1,94 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
+import { createClient } from "@/lib/supabase/client";
 import {
-  createLocalOrder,
-  currentAccount,
-  loginTechnician,
-  logoutTechnician,
-  ordersFor,
-  registerTechnician,
+  statusFromDatabase,
+  type AccountProfile,
   type OrderItem,
-  type TechnicianAccount,
   type TechnicianOrder,
-} from "@/lib/local-account";
+} from "@/lib/account";
+
+type ProfileRow = { id: string; role: AccountProfile["role"]; name: string; shop_name: string; phone: string; created_at: string };
+type ItemRow = { product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string };
+type OrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; created_at: string; updated_at: string; order_items: ItemRow[] };
+
+function mapAccount(user: User, profile: ProfileRow): AccountProfile {
+  return { id: profile.id, role: profile.role, name: profile.name, shopName: profile.shop_name, phone: profile.phone, email: user.email ?? "", createdAt: profile.created_at };
+}
+
+function mapOrder(row: OrderRow): TechnicianOrder {
+  return {
+    id: row.order_number,
+    databaseId: row.id,
+    accountId: row.customer_id,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    status: statusFromDatabase[row.status] ?? "Pendiente de confirmación",
+    total: Number(row.total),
+    items: row.order_items.map((item) => ({ productId: item.product_id ?? "", name: item.product_name, reference: item.reference, quantity: item.quantity, unitPrice: Number(item.unit_price) })),
+  };
+}
 
 export function useLocalAccount() {
-  const [account, setAccount] = useState<TechnicianAccount | null>(null);
+  const supabase = useMemo(() => createClient(), []);
+  const [account, setAccount] = useState<AccountProfile | null>(null);
   const [orders, setOrders] = useState<TechnicianOrder[]>([]);
   const [ready, setReady] = useState(false);
 
-  useEffect(() => {
-    const stored = currentAccount();
-    setAccount(stored);
-    setOrders(stored ? ordersFor(stored.id) : []);
+  const loadOrders = useCallback(async (accountId: string) => {
+    const { data, error } = await supabase.from("orders").select("id, order_number, customer_id, status, total, created_at, updated_at, order_items(product_id, product_name, reference, quantity, unit_price)").eq("customer_id", accountId).order("created_at", { ascending: false });
+    if (error) throw error;
+    setOrders(((data ?? []) as OrderRow[]).map(mapOrder));
+  }, [supabase]);
+
+  const loadAccount = useCallback(async (user: User | null) => {
+    if (!user) { setAccount(null); setOrders([]); setReady(true); return; }
+    const { data, error } = await supabase.from("profiles").select("id, role, name, shop_name, phone, created_at").eq("id", user.id).single();
+    if (error) throw error;
+    const profile = mapAccount(user, data as ProfileRow);
+    setAccount(profile);
+    if (profile.role === "technician") await loadOrders(profile.id);
+    else setOrders([]);
     setReady(true);
-  }, []);
+  }, [loadOrders, supabase]);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => loadAccount(data.user)).catch(() => setReady(true));
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      window.setTimeout(() => loadAccount(session?.user ?? null).catch(() => setReady(true)), 0);
+    });
+    return () => listener.subscription.unsubscribe();
+  }, [loadAccount, supabase]);
 
   return {
     account,
     orders,
     ready,
-    async register(input: Parameters<typeof registerTechnician>[0]) {
-      const created = await registerTechnician(input);
-      setAccount(created);
-      setOrders([]);
+    async register(input: { name: string; shopName: string; phone: string; email: string; password: string }) {
+      const { data, error } = await supabase.auth.signUp({ email: input.email.trim().toLowerCase(), password: input.password, options: { data: { name: input.name.trim(), shop_name: input.shopName.trim(), phone: input.phone.trim() } } });
+      if (error) throw new Error(error.message);
+      if (!data.session) throw new Error("Revisa tu correo para confirmar la cuenta y luego inicia sesión.");
+      await loadAccount(data.user);
     },
     async login(email: string, password: string) {
-      const found = await loginTechnician(email, password);
-      setAccount(found);
-      setOrders(ordersFor(found.id));
+      const { data, error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
+      if (error) throw new Error("Correo o contraseña incorrectos.");
+      await loadAccount(data.user);
     },
-    logout() {
-      logoutTechnician();
+    async logout() {
+      await supabase.auth.signOut();
       setAccount(null);
       setOrders([]);
     },
-    saveOrder(items: OrderItem[], total: number) {
+    async saveOrder(items: OrderItem[], _total: number) {
       if (!account) throw new Error("Debes iniciar sesión.");
       if (account.role !== "technician") throw new Error("Solo los clientes técnicos pueden crear pedidos.");
-      const order = createLocalOrder(account.id, items, total);
-      setOrders((current) => [order, ...current]);
-      return order;
+      const { data, error } = await supabase.rpc("place_order", { items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })) });
+      if (error) throw new Error(error.message);
+      await loadOrders(account.id);
+      return { id: String(data.order_number) };
     },
   };
 }

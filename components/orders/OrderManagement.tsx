@@ -6,12 +6,15 @@ import { CheckCircle2, Clock3, LockKeyhole, PackageCheck, Truck } from "lucide-r
 import { useLocalAccount } from "@/components/account/useLocalAccount";
 import { money } from "@/lib/catalog";
 import {
-  allOrdersWithCustomers,
   ORDER_STATUSES,
-  updateOrderStatus,
+  statusFromDatabase,
+  statusToDatabase,
   type ManagedOrder,
   type OrderStatus,
-} from "@/lib/local-account";
+} from "@/lib/account";
+import { createClient } from "@/lib/supabase/client";
+
+type ManagedOrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; managed_by: string | null; created_at: string; updated_at: string; profiles: { name: string; shop_name: string; phone: string } | null; order_items: Array<{ product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string }> };
 
 const processingStatuses: OrderStatus[] = ["Confirmado", "Preparando pedido"];
 
@@ -23,7 +26,11 @@ export function OrderManagement() {
   const canManage = account?.role === "seller";
 
   useEffect(() => {
-    if (ready && canView) setOrders(allOrdersWithCustomers());
+    if (!ready || !canView) return;
+    createClient().from("orders").select("id, order_number, customer_id, status, total, managed_by, created_at, updated_at, profiles!orders_customer_id_fkey(name, shop_name, phone), order_items(product_id, product_name, reference, quantity, unit_price)").order("created_at", { ascending: false }).then(({ data, error }) => {
+      if (error) { setNotice(error.message); return; }
+      setOrders(((data ?? []) as unknown as ManagedOrderRow[]).map((row) => ({ id: row.order_number, databaseId: row.id, accountId: row.customer_id, createdAt: row.created_at, updatedAt: row.updated_at, status: statusFromDatabase[row.status] ?? "Pendiente de confirmación", total: Number(row.total), managedById: row.managed_by ?? undefined, items: row.order_items.map((item) => ({ productId: item.product_id ?? "", name: item.product_name, reference: item.reference, quantity: item.quantity, unitPrice: Number(item.unit_price) })), customer: row.profiles ? { name: row.profiles.name, shopName: row.profiles.shop_name, phone: row.profiles.phone, email: "" } : null })));
+    });
   }, [ready, canView]);
 
   const counts = useMemo(() => ({
@@ -33,11 +40,14 @@ export function OrderManagement() {
     dispatched: orders.filter((order) => order.status === "Despachado").length,
   }), [orders]);
 
-  function changeStatus(orderId: string, status: OrderStatus) {
+  async function changeStatus(orderId: string, status: OrderStatus) {
     if (!account || !canManage) return;
     try {
-      updateOrderStatus(orderId, status, account);
-      setOrders(allOrdersWithCustomers());
+      const order = orders.find((candidate) => candidate.id === orderId);
+      if (!order) throw new Error("No encontramos ese pedido.");
+      const { error } = await createClient().rpc("change_order_status", { target_order_id: order.databaseId, next_status: statusToDatabase[status] });
+      if (error) throw error;
+      setOrders((current) => current.map((candidate) => candidate.id === orderId ? { ...candidate, status, managedById: account.id, managedByName: account.name, updatedAt: new Date().toISOString() } : candidate));
       setNotice(`Pedido ${orderId} actualizado a “${status}”.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo actualizar el pedido.");

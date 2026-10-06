@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { LockKeyhole } from "lucide-react";
-import catalog from "@/data/catalog.json";
-import type { Product } from "@/lib/catalog";
 import { CatalogTable } from "@/components/admin/CatalogTable";
 import { ProductCreator } from "@/components/admin/ProductCreator";
 import { useLocalCatalog } from "@/components/catalog/useLocalCatalog";
@@ -11,7 +9,7 @@ import { useLocalAccount } from "@/components/account/useLocalAccount";
 
 export default function AdminPage() {
   const { account, ready } = useLocalAccount();
-  const { products } = useLocalCatalog(catalog as Product[]);
+  const { products, loading: catalogLoading, error: catalogError } = useLocalCatalog();
   if (!ready) return <main className="admin-shell"><div className="catalog-loading" aria-label="Comprobando acceso" /></main>;
   if (!account || account.role !== "admin") return <main className="admin-shell admin-locked"><div className="catalog-lock-icon"><LockKeyhole /></div><p>ACCESO RESTRINGIDO</p><h1>Inicia sesión como administrador</h1><span>El catálogo administrativo no está disponible para visitantes ni técnicos.</span><Link href="/">Ir al acceso de técnicos</Link></main>;
 
@@ -21,6 +19,7 @@ export default function AdminPage() {
         <div><p>FLYCDI / ADMINISTRACIÓN</p><h1>Disponibilidad del catálogo</h1><span className="admin-subtitle">Todas las referencias están disponibles por defecto. Cambia solo las que ya no estén disponibles.</span></div>
         <div className="admin-header-actions"><Link href="/ventas">Supervisar pedidos</Link><Link href="/">Ver tienda</Link></div>
       </header>
+      {catalogLoading ? <div className="catalog-loading" aria-label="Cargando catálogo" /> : catalogError ? <p role="alert">No se pudo conectar con el catálogo de Supabase.</p> : null}
       <ProductCreator products={products} account={account} />
       <CatalogTable products={products} account={account} />
     </main>
