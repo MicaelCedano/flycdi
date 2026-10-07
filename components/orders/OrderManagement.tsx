@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { CheckCircle2, Clock3, LockKeyhole, PackageCheck, Truck } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, Clock3, LockKeyhole, PackageCheck, Truck } from "lucide-react";
 import { useLocalAccount } from "@/components/account/useLocalAccount";
 import { money } from "@/lib/catalog";
 import {
@@ -22,6 +22,7 @@ export function OrderManagement() {
   const { account, ready } = useLocalAccount();
   const [orders, setOrders] = useState<ManagedOrder[]>([]);
   const [notice, setNotice] = useState("");
+  const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const canView = account?.role === "seller" || account?.role === "admin";
   const canManage = account?.role === "seller" || account?.role === "admin";
 
@@ -41,7 +42,8 @@ export function OrderManagement() {
   }), [orders]);
 
   async function changeStatus(orderId: string, status: OrderStatus) {
-    if (!account || !canManage) return;
+    if (!account || !canManage || savingOrderId !== null) return;
+    setSavingOrderId(orderId);
     try {
       const order = orders.find((candidate) => candidate.id === orderId);
       if (!order) throw new Error("No encontramos ese pedido.");
@@ -51,6 +53,8 @@ export function OrderManagement() {
       setNotice(`Pedido ${orderId} actualizado a “${status}”.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo actualizar el pedido.");
+    } finally {
+      setSavingOrderId(null);
     }
     window.setTimeout(() => setNotice(""), 3500);
   }
@@ -76,7 +80,19 @@ export function OrderManagement() {
         <div className="sales-order-head"><div><strong>{order.id}</strong><span>{new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div><span className="order-status">{order.status}</span></div>
         <div className="sales-customer"><div><small>CLIENTE TÉCNICO</small><strong>{order.customer?.name ?? "Cliente no disponible"}</strong><span>{order.customer?.shopName ?? "—"}</span></div><div><span>{order.customer?.phone ?? "—"}</span><span>{order.customer?.email ?? "—"}</span></div></div>
         <div className="sales-items">{order.items.map((item) => <div key={`${order.id}-${item.productId}`}><span>{item.quantity} × {item.name}</span><small>{item.reference || "Sin referencia"}</small><strong>{money(item.unitPrice * item.quantity)}</strong></div>)}</div>
-        <div className="sales-order-foot"><div><span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span><strong>{money(order.total)}</strong></div>{canManage ? <label>Estado del pedido<select value={order.status} onChange={(event) => changeStatus(order.id, event.target.value as OrderStatus)}>{ORDER_STATUS_OPTIONS.map((status) => <option key={status} value={status}>{status}</option>)}</select></label> : <div className="supervision-note">Solo ventas y administración pueden actualizarlo.</div>}</div>
+        <div className="sales-order-foot"><div><span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span><strong>{money(order.total)}</strong></div>{canManage ? <details className="status-picker" aria-busy={savingOrderId === order.id}>
+          <summary aria-label={`Cambiar estado del pedido ${order.id}`} aria-controls={`status-options-${order.databaseId}`}>
+            <span className="status-picker-current">{order.status}</span>
+            <span className="status-picker-action">{savingOrderId === order.id ? "Guardando" : "Cambiar"}</span>
+            <ChevronDown aria-hidden="true" />
+          </summary>
+          <div className="status-picker-menu" id={`status-options-${order.databaseId}`}>
+            <span className="status-picker-heading">Selecciona el nuevo estado</span>
+            {ORDER_STATUS_OPTIONS.map((status) => <button className={`status-picker-option${order.status === status ? " is-current" : ""}`} type="button" key={status} aria-pressed={order.status === status} disabled={savingOrderId !== null || order.status === status} onClick={(event) => { event.currentTarget.closest("details")?.removeAttribute("open"); void changeStatus(order.id, status); }}>
+              <span>{status}</span><span className="status-picker-check" aria-hidden="true">{order.status === status ? <Check /> : null}</span>
+            </button>)}
+          </div>
+        </details> : <div className="supervision-note">Solo ventas y administración pueden actualizarlo.</div>}</div>
         {order.managedByName ? <small className="managed-by">Última gestión: {order.managedByName}</small> : null}
       </article>)}
     </section>}
