@@ -17,12 +17,14 @@ import { createClient } from "@/lib/supabase/client";
 type ManagedOrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; managed_by: string | null; created_at: string; updated_at: string; profiles: { name: string; shop_name: string; phone: string } | null; order_items: Array<{ product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string }> };
 
 const processingStatuses: OrderStatus[] = ["Confirmado", "Preparando pedido"];
+const historyStatuses: OrderStatus[] = ["Cancelado", "Entregado"];
 
 export function OrderManagement() {
   const { account, ready } = useLocalAccount();
   const [orders, setOrders] = useState<ManagedOrder[]>([]);
   const [notice, setNotice] = useState("");
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
+  const [orderView, setOrderView] = useState<"active" | "history">("active");
   const canView = account?.role === "seller" || account?.role === "admin";
   const canManage = account?.role === "seller" || account?.role === "admin";
 
@@ -40,6 +42,9 @@ export function OrderManagement() {
     ready: orders.filter((order) => ["Listo para despacho", "Listo para recoger", "Listo para enviar"].includes(order.status)).length,
     dispatched: orders.filter((order) => ["Despachado", "En camino", "Entregado"].includes(order.status)).length,
   }), [orders]);
+  const activeOrders = useMemo(() => orders.filter((order) => !historyStatuses.includes(order.status)), [orders]);
+  const historyOrders = useMemo(() => orders.filter((order) => historyStatuses.includes(order.status)), [orders]);
+  const visibleOrders = orderView === "history" ? historyOrders : activeOrders;
 
   async function changeStatus(orderId: string, status: OrderStatus) {
     if (!account || !canManage || savingOrderId !== null) return;
@@ -50,6 +55,7 @@ export function OrderManagement() {
       const { error } = await createClient().rpc("change_order_status", { target_order_id: order.databaseId, next_status: statusToDatabase[status] });
       if (error) throw error;
       setOrders((current) => current.map((candidate) => candidate.id === orderId ? { ...candidate, status, managedById: account.id, managedByName: account.name, updatedAt: new Date().toISOString() } : candidate));
+      setOrderView(historyStatuses.includes(status) ? "history" : "active");
       setNotice(`Pedido ${orderId} actualizado a “${status}”.`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "No se pudo actualizar el pedido.");
@@ -75,8 +81,13 @@ export function OrderManagement() {
       <article><Truck /><strong>{counts.dispatched}</strong><span>Despachados</span></article>
     </section>
 
-    {!orders.length ? <section className="sales-empty"><PackageCheck /><h2>No hay pedidos todavía</h2><p>Los pedidos creados por técnicos aparecerán aquí.</p></section> : <section className="sales-orders" aria-label="Pedidos recibidos">
-      {orders.map((order) => <article className="sales-order" key={order.id}>
+    <nav className="order-view-switch" aria-label="Filtrar pedidos">
+      <button className={orderView === "active" ? "is-selected" : ""} type="button" aria-pressed={orderView === "active"} onClick={() => setOrderView("active")}>Pedidos activos <span>{activeOrders.length}</span></button>
+      <button className={orderView === "history" ? "is-selected" : ""} type="button" aria-pressed={orderView === "history"} onClick={() => setOrderView("history")}>Historial <span>{historyOrders.length}</span></button>
+    </nav>
+
+    {!orders.length ? <section className="sales-empty"><PackageCheck /><h2>No hay pedidos todavía</h2><p>Los pedidos creados por técnicos aparecerán aquí.</p></section> : !visibleOrders.length ? <section className="sales-empty"><PackageCheck /><h2>{orderView === "history" ? "El historial está vacío" : "No hay pedidos activos"}</h2><p>{orderView === "history" ? "Los pedidos cancelados o entregados aparecerán aquí." : "Los pedidos activos aparecerán aquí cuando haya alguno."}</p></section> : <section className="sales-orders" aria-label={orderView === "history" ? "Historial de pedidos" : "Pedidos activos"}>
+      {visibleOrders.map((order) => <article className="sales-order" key={order.id}>
         <div className="sales-order-head"><div><strong>{order.id}</strong><span>{new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div><span className="order-status">{order.status}</span></div>
         <div className="sales-customer"><div><small>CLIENTE TÉCNICO</small><strong>{order.customer?.name ?? "Cliente no disponible"}</strong><span>{order.customer?.shopName ?? "—"}</span></div><div><span>{order.customer?.phone ?? "—"}</span><span>{order.customer?.email ?? "—"}</span></div></div>
         <div className="sales-items">{order.items.map((item) => <div key={`${order.id}-${item.productId}`}><span>{item.quantity} × {item.name}</span><small>{item.reference || "Sin referencia"}</small><strong>{money(item.unitPrice * item.quantity)}</strong></div>)}</div>

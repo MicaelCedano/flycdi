@@ -77,3 +77,11 @@
 .status-picker-option.is-current .status-picker-check{border-color:#e22b43;background:#e22b43}
 .status-picker-check svg{width:12px;height:12px;stroke-width:3}
 @media(max-width:650px){.status-picker{width:100%;align-self:stretch}.sales-order-foot:has(.status-picker[open])>div:first-child{margin-bottom:2px}}
+.order-view-switch{display:flex;width:max-content;max-width:100%;gap:5px;margin:24px 0 15px;padding:5px;border:1px solid var(--line);border-radius:13px;background:#f5f7fa}
+.order-view-switch button{display:flex;align-items:center;gap:9px;min-height:40px;padding:0 14px;border:0;border-radius:9px;background:transparent;color:#647184;font:inherit;font-size:12px;font-weight:750;cursor:pointer;transition:background .16s ease,color .16s ease,box-shadow .16s ease}
+.order-view-switch button:hover{color:var(--ink)}
+.order-view-switch button.is-selected{background:#fff;color:var(--ink);box-shadow:0 2px 8px rgba(18,43,78,.09)}
+.order-view-switch button:focus-visible{outline:3px solid rgba(239,35,60,.25);outline-offset:2px}
+.order-view-switch button span{display:grid;min-width:22px;height:22px;padding:0 6px;place-items:center;border-radius:999px;background:#e9eef4;color:#5d6b7d;font-size:10px;font-weight:800}
+.order-view-switch button.is-selected span{background:#fff1f2;color:#c91d35}
+@media(max-width:650px){.order-view-switch{width:100%}.order-view-switch button{flex:1;justify-content:center;padding-inline:9px}}
