@@ -111,9 +111,9 @@ export function Storefront() {
       <header className="site-header">
         <div className="header-inner shell">
           <a className="brand" href="#inicio"><Image src="/assets/flycdi-logo.png" alt="FLYCDI" width={176} height={48} priority /></a>
-          <button className="menu-button" aria-label="Abrir menú" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}><Menu /></button>
-          <nav className={`nav-links ${menuOpen ? "mobile-open" : ""}`} aria-label="Navegación principal">
-            <a href="#inicio">Inicio</a>{hasCatalogAccess ? <a href="#catalogo">Catálogo</a> : null}{staffPath ? <a href={staffPath}>{localAccount.account?.role === "seller" ? "Pedidos" : "Administración"}</a> : null}<a href="#calidades">Calidades</a><a href="#como-comprar">Cómo comprar</a><a href="#contacto">Contacto</a>
+          <button className="menu-button" aria-label={menuOpen ? "Cerrar menú" : "Abrir menú"} aria-controls="primary-navigation" aria-expanded={menuOpen} onClick={() => setMenuOpen(!menuOpen)}>{menuOpen ? <X /> : <Menu />}</button>
+          <nav id="primary-navigation" className={`nav-links ${menuOpen ? "mobile-open" : ""}`} aria-label="Navegación principal">
+            <a href="#inicio" onClick={() => setMenuOpen(false)}>Inicio</a>{hasCatalogAccess ? <a href="#catalogo" onClick={() => setMenuOpen(false)}>Catálogo</a> : null}{staffPath ? <a href={staffPath}>{localAccount.account?.role === "seller" ? "Pedidos" : "Administración"}</a> : null}<a href="#calidades" onClick={() => setMenuOpen(false)}>Calidades</a><a href="#como-comprar" onClick={() => setMenuOpen(false)}>Cómo comprar</a><a href="#contacto" onClick={() => setMenuOpen(false)}>Contacto</a>
           </nav>
           <button className="account-button" onClick={openAccount}>{localAccount.account ? `Hola, ${localAccount.account.name.split(" ")[0]}` : "Iniciar sesión"}</button>
         </div>
