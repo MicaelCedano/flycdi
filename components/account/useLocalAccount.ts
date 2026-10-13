@@ -11,7 +11,7 @@ import {
 } from "@/lib/account";
 
 type ProfileRow = { id: string; username: string; role: AccountProfile["role"]; approved: boolean; name: string; shop_name: string; phone: string; created_at: string };
-type ItemRow = { product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string };
+type ItemRow = { product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string; price_tier: 1 | 2 | 3 | null };
 type OrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; created_at: string; updated_at: string; order_items: ItemRow[] };
 
 function mapAccount(user: User, profile: ProfileRow): AccountProfile {
@@ -27,7 +27,7 @@ function mapOrder(row: OrderRow): TechnicianOrder {
     updatedAt: row.updated_at,
     status: statusFromDatabase[row.status] ?? "Pendiente de confirmación",
     total: Number(row.total),
-    items: row.order_items.map((item) => ({ productId: item.product_id ?? "", name: item.product_name, reference: item.reference, quantity: item.quantity, unitPrice: Number(item.unit_price) })),
+    items: row.order_items.map((item) => ({ productId: item.product_id ?? "", name: item.product_name, reference: item.reference, quantity: item.quantity, unitPrice: Number(item.unit_price), priceTier: item.price_tier })),
   };
 }
 
@@ -38,7 +38,7 @@ export function useLocalAccount() {
   const [ready, setReady] = useState(false);
 
   const loadOrders = useCallback(async (accountId: string) => {
-    const { data, error } = await supabase.from("orders").select("id, order_number, customer_id, status, total, created_at, updated_at, order_items(product_id, product_name, reference, quantity, unit_price)").eq("customer_id", accountId).order("created_at", { ascending: false });
+    const { data, error } = await supabase.from("orders").select("id, order_number, customer_id, status, total, created_at, updated_at, order_items(product_id, product_name, reference, quantity, unit_price, price_tier)").eq("customer_id", accountId).order("created_at", { ascending: false });
     if (error) throw error;
     setOrders(((data ?? []) as OrderRow[]).map(mapOrder));
   }, [supabase]);

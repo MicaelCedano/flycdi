@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Check, CheckCircle2, ChevronDown, Clock3, LockKeyhole, PackageCheck, Truck } from "lucide-react";
 import { useLocalAccount } from "@/components/account/useLocalAccount";
 import { money } from "@/lib/catalog";
@@ -13,8 +13,9 @@ import {
   type OrderStatus,
 } from "@/lib/account";
 import { createClient } from "@/lib/supabase/client";
+import { StaffOrderForm } from "@/components/orders/StaffOrderForm";
 
-type ManagedOrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; managed_by: string | null; created_at: string; updated_at: string; profiles: { name: string; shop_name: string; phone: string } | null; order_items: Array<{ product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string }> };
+type ManagedOrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; managed_by: string | null; created_at: string; updated_at: string; profiles: { name: string; shop_name: string; phone: string } | null; order_items: Array<{ product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string; price_tier: number | null }> };
 
 const processingStatuses: OrderStatus[] = ["Confirmado", "Preparando pedido"];
 const historyStatuses: OrderStatus[] = ["Cancelado", "Entregado"];
@@ -25,16 +26,30 @@ export function OrderManagement() {
   const [notice, setNotice] = useState("");
   const [savingOrderId, setSavingOrderId] = useState<string | null>(null);
   const [orderView, setOrderView] = useState<"active" | "history">("active");
+  const [ordersLoading, setOrdersLoading] = useState(true);
   const canView = account?.role === "seller" || account?.role === "admin";
   const canManage = account?.role === "seller" || account?.role === "admin";
 
+  const loadOrders = useCallback(async () => {
+    setOrdersLoading(true);
+    const { data, error } = await createClient().from("orders").select("id, order_number, customer_id, status, total, managed_by, created_at, updated_at, profiles!orders_customer_id_fkey(name, shop_name, phone), order_items(product_id, product_name, reference, quantity, unit_price, price_tier)").order("created_at", { ascending: false });
+    if (error) setNotice("No se pudieron cargar los pedidos.");
+    else {
+      setOrders(((data ?? []) as unknown as ManagedOrderRow[]).map((row) => ({ id: row.order_number, databaseId: row.id, accountId: row.customer_id, createdAt: row.created_at, updatedAt: row.updated_at, status: statusFromDatabase[row.status] ?? "Pendiente de confirmación", total: Number(row.total), managedById: row.managed_by ?? undefined, items: row.order_items.map((item) => ({ productId: item.product_id ?? "", name: item.product_name, reference: item.reference, quantity: item.quantity, unitPrice: Number(item.unit_price), priceTier: item.price_tier as 1 | 2 | 3 | null })), customer: row.profiles ? { name: row.profiles.name, shopName: row.profiles.shop_name, phone: row.profiles.phone, email: "" } : null })));
+    }
+    setOrdersLoading(false);
+  }, []);
+
   useEffect(() => {
-    if (!ready || !canView) return;
-    createClient().from("orders").select("id, order_number, customer_id, status, total, managed_by, created_at, updated_at, profiles!orders_customer_id_fkey(name, shop_name, phone), order_items(product_id, product_name, reference, quantity, unit_price)").order("created_at", { ascending: false }).then(({ data, error }) => {
-      if (error) { setNotice(error.message); return; }
-      setOrders(((data ?? []) as unknown as ManagedOrderRow[]).map((row) => ({ id: row.order_number, databaseId: row.id, accountId: row.customer_id, createdAt: row.created_at, updatedAt: row.updated_at, status: statusFromDatabase[row.status] ?? "Pendiente de confirmación", total: Number(row.total), managedById: row.managed_by ?? undefined, items: row.order_items.map((item) => ({ productId: item.product_id ?? "", name: item.product_name, reference: item.reference, quantity: item.quantity, unitPrice: Number(item.unit_price) })), customer: row.profiles ? { name: row.profiles.name, shopName: row.profiles.shop_name, phone: row.profiles.phone, email: "" } : null })));
-    });
-  }, [ready, canView]);
+    if (ready && canView) void loadOrders();
+  }, [ready, canView, loadOrders]);
+
+  function onOrderCreated(orderNumber: string) {
+    setOrderView("active");
+    setNotice(`Pedido ${orderNumber} registrado. Quedó confirmado y aparece en pedidos activos.`);
+    void loadOrders();
+    window.setTimeout(() => setNotice(""), 4500);
+  }
 
   const counts = useMemo(() => ({
     pending: orders.filter((order) => order.status === "Pendiente de confirmación").length,
@@ -74,6 +89,8 @@ export function OrderManagement() {
       <div className="admin-header-actions">{account.role === "admin" ? <Link href="/admin">Catálogo admin</Link> : null}<Link href="/">Ver tienda</Link></div>
     </header>
 
+    <StaffOrderForm onCreated={onOrderCreated} />
+
     <section className="admin-metrics sales-metrics" aria-label="Resumen de pedidos">
       <article><Clock3 /><strong>{counts.pending}</strong><span>Pendientes</span></article>
       <article><PackageCheck /><strong>{counts.processing}</strong><span>En proceso</span></article>
@@ -86,11 +103,11 @@ export function OrderManagement() {
       <button className={orderView === "history" ? "is-selected" : ""} type="button" aria-pressed={orderView === "history"} onClick={() => setOrderView("history")}>Historial <span>{historyOrders.length}</span></button>
     </nav>
 
-    {!orders.length ? <section className="sales-empty"><PackageCheck /><h2>No hay pedidos todavía</h2><p>Los pedidos creados por técnicos aparecerán aquí.</p></section> : !visibleOrders.length ? <section className="sales-empty"><PackageCheck /><h2>{orderView === "history" ? "El historial está vacío" : "No hay pedidos activos"}</h2><p>{orderView === "history" ? "Los pedidos cancelados o entregados aparecerán aquí." : "Los pedidos activos aparecerán aquí cuando haya alguno."}</p></section> : <section className="sales-orders" aria-label={orderView === "history" ? "Historial de pedidos" : "Pedidos activos"}>
+    {ordersLoading ? <section className="sales-empty"><div className="catalog-loading" aria-label="Cargando pedidos" /></section> : !orders.length ? <section className="sales-empty"><PackageCheck /><h2>No hay pedidos todavía</h2><p>Los pedidos creados por técnicos aparecerán aquí.</p></section> : !visibleOrders.length ? <section className="sales-empty"><PackageCheck /><h2>{orderView === "history" ? "El historial está vacío" : "No hay pedidos activos"}</h2><p>{orderView === "history" ? "Los pedidos cancelados o entregados aparecerán aquí." : "Los pedidos activos aparecerán aquí cuando haya alguno."}</p></section> : <section className="sales-orders" aria-label={orderView === "history" ? "Historial de pedidos" : "Pedidos activos"}>
       {visibleOrders.map((order) => <article className="sales-order" key={order.id}>
         <div className="sales-order-head"><div><strong>{order.id}</strong><span>{new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(order.createdAt))}</span></div><span className="order-status">{order.status}</span></div>
         <div className="sales-customer"><div><small>CLIENTE TÉCNICO</small><strong>{order.customer?.name ?? "Cliente no disponible"}</strong><span>{order.customer?.shopName ?? "—"}</span></div><div><span>{order.customer?.phone ?? "—"}</span><span>{order.customer?.email ?? "—"}</span></div></div>
-        <div className="sales-items">{order.items.map((item) => <div key={`${order.id}-${item.productId}`}><span>{item.quantity} × {item.name}</span><small>{item.reference || "Sin referencia"}</small><strong>{money(item.unitPrice * item.quantity)}</strong></div>)}</div>
+        <div className="sales-items">{order.items.map((item, index) => <div key={`${order.id}-${index}`}><span>{item.quantity} × {item.name}</span><small>{item.reference || "Sin referencia"}{item.priceTier ? ` · Precio ${item.priceTier}` : ""}</small><strong>{money(item.unitPrice * item.quantity)}</strong></div>)}</div>
         <div className="sales-order-foot"><div><span>{order.items.reduce((sum, item) => sum + item.quantity, 0)} piezas</span><strong>{money(order.total)}</strong></div>{canManage ? <details className="status-picker" aria-busy={savingOrderId === order.id}>
           <summary aria-label={`Cambiar estado del pedido ${order.id}`} aria-controls={`status-options-${order.databaseId}`}>
             <span className="status-picker-current">{order.status}</span>

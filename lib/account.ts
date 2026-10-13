@@ -17,6 +17,7 @@ export type OrderItem = {
   reference: string;
   quantity: number;
   unitPrice: number;
+  priceTier?: 1 | 2 | 3 | null;
 };
 
 export const ORDER_STATUS_OPTIONS = [
