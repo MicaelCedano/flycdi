@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 330" fill="none">
+  <rect width="420" height="330" rx="28" fill="#F2F6F3"/>
+  <circle cx="210" cy="165" r="116" fill="#E0EFE5"/>
+  <rect x="128" y="92" width="164" height="146" rx="22" fill="#173D2B"/>
+  <rect x="177" y="76" width="66" height="20" rx="8" fill="#173D2B"/>
+  <rect x="144" y="108" width="132" height="114" rx="14" stroke="#83C99A" stroke-width="4"/>
+  <path d="m218 121-39 51h27l-8 39 43-57h-29l6-33Z" fill="#B5F3C3"/>
+  <text x="210" y="278" fill="#173D2B" font-family="Arial,sans-serif" font-size="16" font-weight="700" letter-spacing="2" text-anchor="middle">BATERÍA</text>
+</svg>

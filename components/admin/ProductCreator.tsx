@@ -52,8 +52,8 @@ export function ProductCreator({ account, products }: { account: AccountProfile;
     {open ? <form className="product-create-form" onSubmit={submit}>
       <label>Marca<input name="brand" required placeholder="Ej. Samsung" /></label>
       <label>Modelo<input name="model" required placeholder="Ej. A15" /></label>
-      <label>Categoría<select name="category" defaultValue="Pantallas"><option>Pantallas</option><option>Cámaras traseras</option><option>Flex pin de carga</option></select></label>
-      <label>Tipo o calidad<input name="productType" required defaultValue="LCD" placeholder="Ej. LCD, OLED o cámara" /></label>
+      <label>Categoría<select name="category" defaultValue="Pantallas"><option>Pantallas</option><option>Cámaras traseras</option><option>Flex pin de carga</option><option>Baterías</option></select></label>
+      <label>Tipo o calidad<input name="productType" required placeholder="Ej. LCD, cámara o batería" /></label>
       <label>Variante<input name="variant" placeholder="Ej. FLYCDI - Negro" /></label>
       <label>Referencia<input name="reference" required placeholder="Ej. C4001" /></label>
       <label>Precio 1–9<input name="price1" required type="number" inputMode="decimal" min="1" step="0.01" placeholder="0.00" /></label>

@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useDeferredValue, useMemo, useState } from "react";
-import { Camera, ChevronRight, Home, LockKeyhole, Menu, Minus, PackageSearch, Plus, Search, ShoppingBag, Smartphone, Usb, UserRound, X } from "lucide-react";
+import { BatteryCharging, Camera, ChevronRight, Home, LockKeyhole, Menu, Minus, PackageSearch, Plus, Search, ShoppingBag, Smartphone, Usb, UserRound, X } from "lucide-react";
 import type { Product } from "@/lib/catalog";
 import { money, productName, tierPrice } from "@/lib/catalog";
 import { AccountDrawer } from "@/components/account/AccountDrawer";
@@ -20,6 +20,7 @@ const imageByCategory: Record<Product["category"], string> = {
   Pantallas: "/assets/pantalla-iphone-13.png",
   "Cámaras traseras": "/assets/camara-iphone-13.png",
   "Flex pin de carga": "/assets/flex-samsung-a15.png",
+  "Baterías": "/assets/bateria.svg",
 };
 
 export function Storefront() {
@@ -123,24 +124,24 @@ export function Storefront() {
         <section className="hero shell" id="inicio">
           <div className="hero-copy">
             <h1>Repuestos para celulares, <span>listos para tu negocio.</span></h1>
-            <p>{hasCatalogAccess ? "411 referencias entre pantallas, cámaras y flex pin, con precios especiales por volumen." : "Catálogo y precios exclusivos para técnicos registrados y talleres autorizados."}</p>
+            <p>{hasCatalogAccess ? "451 referencias entre pantallas, cámaras, flex pin y baterías, con precios especiales por volumen." : "Catálogo y precios exclusivos para técnicos registrados y talleres autorizados."}</p>
             {hasCatalogAccess ? <form className="finder" onSubmit={(event) => { event.preventDefault(); applyFilters(); }}>
               <label className="search-field"><Search aria-hidden="true" /><input type="search" placeholder="Busca por modelo, pieza o código" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></label>
               <div className="finder-row">
                 <label>Marca<select value={filters.brand} onChange={(e) => setFilters({ ...filters, brand: e.target.value, model: ALL })}><option>{ALL}</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label>
                 <label>Modelo<select value={filters.model} onChange={(e) => setFilters({ ...filters, model: e.target.value })}><option>{ALL}</option>{models.map((model) => <option key={model}>{model}</option>)}</select></label>
-                <label>Tipo de pieza<select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}><option>{ALL}</option><option>Pantallas</option><option>Cámaras traseras</option><option>Flex pin de carga</option></select></label>
+                <label>Tipo de pieza<select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}><option>{ALL}</option><option>Pantallas</option><option>Cámaras traseras</option><option>Flex pin de carga</option><option>Baterías</option></select></label>
                 <button className="primary" type="submit">Buscar repuestos</button>
               </div>
             </form> : <div className="private-access-note"><LockKeyhole /><div><strong>Acceso privado para técnicos</strong><span>Inicia sesión o crea tu cuenta para consultar existencias y precios mayoristas.</span></div></div>}
             <div className="hero-actions"><button className="primary large" onClick={openCatalog}>{hasCatalogAccess ? "Ver catálogo" : "Iniciar sesión"}</button>{canPlaceOrders ? <button className="secondary large" onClick={() => setCartOpen(true)}>Pedido rápido</button> : staffPath ? <a className="secondary large" href={staffPath}>Ir a mi panel</a> : <button className="secondary large" onClick={openAccount}>Crear cuenta</button>}</div>
-            <ul className="trust-list"><li><strong>411 referencias</strong><span>266 pantallas, 19 cámaras y 126 flex pin.</span></li><li><strong>Piezas probadas</strong><span>Control de calidad antes del despacho.</span></li><li><strong>Envíos a toda RD</strong><span>Despachos rápidos para tu taller.</span></li></ul>
+            <ul className="trust-list"><li><strong>451 referencias</strong><span>266 pantallas, 19 cámaras, 126 flex pin y 40 baterías.</span></li><li><strong>Piezas probadas</strong><span>Control de calidad antes del despacho.</span></li><li><strong>Envíos a toda RD</strong><span>Despachos rápidos para tu taller.</span></li></ul>
           </div>
           <div className="hero-visual"><Image src="/assets/hero-piezas.png" alt="Pantallas, cámaras y flex pin para celulares" width={780} height={700} priority /><div className="quality-note"><span />Calidad que protege<br />la reputación de tu taller</div></div>
         </section>
 
         {hasCatalogAccess ? <section className="category-strip shell" aria-label="Categorías">
-          {[[ALL, Smartphone, "Todo"], ["Pantallas", Smartphone, "Pantallas"], ["Cámaras traseras", Camera, "Cámaras traseras"], ["Flex pin de carga", Usb, "Flex pin de carga"]].map(([value, Icon, label]) => <button key={String(value)} className={`category ${applied.category === value ? "active" : ""}`} onClick={() => setCategory(String(value))}><Icon size={20} />{String(label)}</button>)}
+          {[[ALL, Smartphone, "Todo"], ["Pantallas", Smartphone, "Pantallas"], ["Cámaras traseras", Camera, "Cámaras traseras"], ["Flex pin de carga", Usb, "Flex pin de carga"], ["Baterías", BatteryCharging, "Baterías"]].map(([value, Icon, label]) => <button key={String(value)} className={`category ${applied.category === value ? "active" : ""}`} onClick={() => setCategory(String(value))}><Icon size={20} />{String(label)}</button>)}
         </section> : null}
 
         <section className="catalog shell" id="catalogo">

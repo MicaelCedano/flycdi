@@ -1,6 +1,6 @@
 export type Product = {
   id: string;
-  category: "Pantallas" | "Cámaras traseras" | "Flex pin de carga";
+  category: "Pantallas" | "Cámaras traseras" | "Flex pin de carga" | "Baterías";
   brand: string;
   model: string;
   productType: string;
@@ -23,6 +23,6 @@ export const money = (value: number) =>
   }).format(value).replace("DOP", "RD$");
 
 export const productName = (product: Product) => {
-  const label = product.category === "Pantallas" ? "Pantalla" : product.productType;
+  const label = product.category === "Pantallas" ? "Pantalla" : product.category === "Baterías" ? "Batería" : product.productType;
   return `${label} ${product.brand} ${product.model}`;
 };
