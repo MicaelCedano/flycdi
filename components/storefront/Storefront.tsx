@@ -20,7 +20,7 @@ const imageByCategory: Record<Product["category"], string> = {
   Pantallas: "/assets/pantalla-iphone-13.png",
   "Cámaras traseras": "/assets/camara-iphone-13.png",
   "Flex pin de carga": "/assets/flex-samsung-a15.png",
-  "Baterías": "/assets/bateria.svg",
+  "Baterías": "/assets/bateria-producto.png",
 };
 
 export function Storefront() {
