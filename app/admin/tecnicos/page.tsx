@@ -1,60 +1,91 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocalAccount } from "@/components/account/useLocalAccount";
 
-type PendingProfile = {
+type TechnicianProfile = {
   id: string;
   username: string;
   name: string;
   shop_name: string;
   phone: string;
   created_at: string;
+  approved: boolean;
 };
 
-export default function PendingTechniciansPage() {
+type TechnicianView = "no-access" | "active";
+
+export default function RegisteredTechniciansPage() {
   const { account, ready } = useLocalAccount();
   const [supabase] = useState(() => createClient());
-  const [pending, setPending] = useState<PendingProfile[]>([]);
+  const [technicians, setTechnicians] = useState<TechnicianProfile[]>([]);
+  const [view, setView] = useState<TechnicianView>("no-access");
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
-  const loadPending = useCallback(async () => {
+  const loadTechnicians = useCallback(async () => {
     setLoading(true);
     const { data, error: queryError } = await supabase
       .from("profiles")
-      .select("id, username, name, shop_name, phone, created_at")
+      .select("id, username, name, shop_name, phone, created_at, approved")
       .eq("role", "technician")
-      .eq("approved", false)
-      .order("created_at", { ascending: true });
-    if (queryError) setError("No pudimos cargar las solicitudes pendientes.");
-    else setPending((data ?? []) as PendingProfile[]);
+      .order("created_at", { ascending: false });
+    if (queryError) setError("No pudimos cargar la lista de técnicos.");
+    else setTechnicians((data ?? []) as TechnicianProfile[]);
     setLoading(false);
   }, [supabase]);
 
   useEffect(() => {
-    if (ready && account?.role === "admin") void loadPending();
-  }, [account?.role, loadPending, ready]);
+    if (ready && account?.role === "admin") void loadTechnicians();
+  }, [account?.role, loadTechnicians, ready]);
 
-  async function approve(profile: PendingProfile) {
+  const counts = useMemo(() => technicians.reduce((result, technician) => {
+    if (technician.approved) result.active += 1;
+    else result.noAccess += 1;
+    return result;
+  }, { noAccess: 0, active: 0 }), [technicians]);
+
+  const visibleTechnicians = useMemo(() => {
+    const query = search.trim().toLocaleLowerCase("es");
+    return technicians.filter((technician) => {
+      const matchesView = view === "active" ? technician.approved : !technician.approved;
+      const matchesSearch = !query || `${technician.name} ${technician.username} ${technician.shop_name} ${technician.phone}`
+        .toLocaleLowerCase("es")
+        .includes(query);
+      return matchesView && matchesSearch;
+    });
+  }, [search, technicians, view]);
+
+  async function setApproval(profile: TechnicianProfile, approved: boolean) {
     setBusyId(profile.id);
     setError("");
     setNotice("");
-    const { error: updateError } = await supabase
-      .from("profiles")
-      .update({ approved: true })
-      .eq("id", profile.id);
-    if (updateError) {
-      setError("No pudimos habilitar esta cuenta. Inténtalo de nuevo.");
-    } else {
-      setPending((rows) => rows.filter((row) => row.id !== profile.id));
-      setNotice(`La cuenta de ${profile.name} quedó habilitada. Ya puede iniciar sesión.`);
+    try {
+      const { data, error: updateError } = await supabase
+        .from("profiles")
+        .update({ approved })
+        .eq("id", profile.id)
+        .eq("approved", profile.approved)
+        .select("id")
+        .maybeSingle();
+      if (updateError || !data) {
+        setError(`No pudimos ${approved ? "habilitar" : "suspender"} esta cuenta. Actualiza la lista e inténtalo de nuevo.`);
+        return;
+      }
+      setTechnicians((rows) => rows.map((row) => row.id === profile.id ? { ...row, approved } : row));
+      setNotice(approved
+        ? `La cuenta de ${profile.name} quedó habilitada.`
+        : `Se suspendió el acceso de ${profile.name}. Su cuenta y sus pedidos se conservaron.`);
+    } catch {
+      setError(`No pudimos ${approved ? "habilitar" : "suspender"} esta cuenta. Inténtalo de nuevo.`);
+    } finally {
+      setBusyId(null);
     }
-    setBusyId(null);
   }
 
   if (!ready) return <main className="admin-shell"><div className="catalog-loading" aria-label="Comprobando acceso" /></main>;
@@ -63,19 +94,30 @@ export default function PendingTechniciansPage() {
   return (
     <main className="admin-shell">
       <header className="admin-header">
-        <div><p>FLYCDI / ADMINISTRACIÓN</p><h1>Solicitudes de técnicos</h1><span className="admin-subtitle">Revisa los datos y habilita manualmente las cuentas verificadas.</span></div>
+        <div><p>FLYCDI / ADMINISTRACIÓN</p><h1>Técnicos registrados</h1><span className="admin-subtitle">Revisa solicitudes, administra accesos y conserva el historial de cada cuenta.</span></div>
         <div className="admin-header-actions"><Link href="/admin">Volver al catálogo</Link><Link href="/">Ver tienda</Link></div>
       </header>
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
       {notice ? <p className="auth-notice" role="status">{notice}</p> : null}
-      {loading ? <div className="catalog-loading" aria-label="Cargando solicitudes" /> : pending.length ? (
-        <section className="pending-technicians" aria-label="Solicitudes pendientes">
-          {pending.map((profile) => <article className="pending-technician" key={profile.id}>
-            <div><span>@{profile.username}</span><h2>{profile.name}</h2><p>{profile.shop_name || "Taller sin nombre"}</p><p>{profile.phone || "Sin WhatsApp"}</p><small>Solicitud: {new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(profile.created_at))}</small></div>
-            <button className="primary" disabled={busyId === profile.id} onClick={() => void approve(profile)}>{busyId === profile.id ? "Guardando…" : "Habilitar cuenta"}</button>
-          </article>)}
-        </section>
-      ) : <section className="pending-empty"><h2>No hay solicitudes pendientes</h2><p>Las nuevas cuentas aparecerán aquí para revisión.</p></section>}
+      <section className="technician-manager" aria-label="Administrar técnicos">
+        <div className="technician-manager-toolbar">
+          <div className="technician-tabs" role="tablist" aria-label="Estado de los técnicos">
+            {([
+              ["no-access", "Sin acceso", counts.noAccess],
+              ["active", "Habilitados", counts.active],
+            ] as const).map(([tab, label, count]) => <button key={tab} type="button" role="tab" aria-selected={view === tab} className={view === tab ? "active" : ""} onClick={() => setView(tab)}>{label}<span>{count}</span></button>)}
+          </div>
+          <label className="technician-search"><input aria-label="Buscar técnicos" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nombre, taller o WhatsApp" /></label>
+        </div>
+        {loading ? <div className="catalog-loading" aria-label="Cargando técnicos" /> : visibleTechnicians.length ? (
+          <div className="pending-technicians" role="tabpanel">
+            {visibleTechnicians.map((profile) => <article className="pending-technician" key={profile.id}>
+              <div><span>@{profile.username}</span><h2>{profile.name}</h2><p>{profile.shop_name || "Taller sin nombre"}</p><p>{profile.phone || "Sin WhatsApp"}</p><small>Registro: {new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(profile.created_at))}</small></div>
+              <button className={profile.approved ? "technician-disable" : "primary"} disabled={busyId === profile.id} onClick={() => void setApproval(profile, !profile.approved)}>{busyId === profile.id ? "Guardando…" : profile.approved ? "Suspender acceso" : "Habilitar cuenta"}</button>
+            </article>)}
+          </div>
+        ) : <section className="pending-empty"><h2>{search ? "No hay coincidencias" : view === "no-access" ? "No hay técnicos sin acceso" : "No hay técnicos habilitados"}</h2><p>{search ? "Prueba con otro nombre, taller o WhatsApp." : view === "no-access" ? "Las cuentas nuevas o suspendidas aparecerán aquí." : "Los técnicos habilitados aparecerán aquí."}</p></section>}
+      </section>
     </main>
   );
 }
