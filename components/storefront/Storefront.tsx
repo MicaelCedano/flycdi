@@ -3,15 +3,15 @@
 import Image from "next/image";
 import { useDeferredValue, useMemo, useState } from "react";
 import { BatteryCharging, Camera, ChevronRight, Home, LockKeyhole, Menu, Minus, PackageSearch, Plus, Search, ShoppingBag, Smartphone, Usb, UserRound, X } from "lucide-react";
-import type { Product } from "@/lib/catalog";
-import { money, productName, tierPrice } from "@/lib/catalog";
+import type { Product, PriceTier } from "@/lib/catalog";
+import { money, priceForTier, productName, tierPrice } from "@/lib/catalog";
 import { AccountDrawer } from "@/components/account/AccountDrawer";
 import { useLocalAccount } from "@/components/account/useLocalAccount";
 import { useLocalInventory } from "@/components/inventory/useLocalInventory";
 import { useLocalCatalog } from "@/components/catalog/useLocalCatalog";
 import { isProductAvailable } from "@/lib/local-inventory";
 
-type CartLine = { product: Product; quantity: number };
+type CartLine = { product: Product; quantity: number; priceTier: PriceTier | null };
 type Filters = { search: string; brand: string; model: string; category: string };
 const ALL = "Todas";
 const PAGE_SIZE = 12;
@@ -28,6 +28,9 @@ const imageByCategory: Record<Product["category"], string> = {
   "Baterías": "/assets/bateria-producto.png",
 };
 
+const unitPrice = (product: Product, quantity: number, assignedTier: PriceTier | null) =>
+  assignedTier ? priceForTier(product, assignedTier) : tierPrice(product, quantity);
+
 export function Storefront() {
   const [filters, setFilters] = useState<Filters>({ search: "", brand: ALL, model: ALL, category: ALL });
   const [applied, setApplied] = useState(filters);
@@ -42,6 +45,7 @@ export function Storefront() {
   const { inventory } = useLocalInventory();
   const hasCatalogAccess = localAccount.ready && Boolean(localAccount.account);
   const canPlaceOrders = localAccount.account?.role === "technician";
+  const assignedPriceTier = localAccount.account?.role === "technician" ? localAccount.account.priceTier : null;
   const staffPath = localAccount.account?.role === "seller" ? "/ventas" : localAccount.account?.role === "admin" ? "/admin" : null;
   const deferredSearch = useDeferredValue(normalizeSearch(applied.search));
   const searchTerms = useMemo(() => deferredSearch.split(/\s+/).filter(Boolean), [deferredSearch]);
@@ -79,7 +83,7 @@ export function Storefront() {
     }
     setCart((current) => {
       const found = current.find((line) => line.product.id === product.id);
-      return found ? current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1 } : line) : [...current, { product, quantity: 1 }];
+      return found ? current.map((line) => line.product.id === product.id ? { ...line, quantity: line.quantity + 1, priceTier: assignedPriceTier } : line) : [...current, { product, quantity: 1, priceTier: assignedPriceTier }];
     });
     setCartOpen(true);
   };
@@ -89,7 +93,7 @@ export function Storefront() {
     if (!Number.isFinite(quantity)) return;
     setCart((current) => current.map((line) => line.product.id === id ? { ...line, quantity: Math.max(1, quantity) } : line));
   };
-  const total = cart.reduce((sum, line) => sum + tierPrice(line.product, line.quantity) * line.quantity, 0);
+  const total = cart.reduce((sum, line) => sum + unitPrice(line.product, line.quantity, line.priceTier) * line.quantity, 0);
   const openAccount = () => { setCartOpen(false); setAccountOpen(true); };
   const openCatalog = () => {
     if (!hasCatalogAccess) { openAccount(); return; }
@@ -99,7 +103,7 @@ export function Storefront() {
     if (!localAccount.account) { openAccount(); return; }
     if (!canPlaceOrders) { setOrderNotice("Solo los clientes técnicos pueden crear pedidos."); return; }
     try {
-      const order = await localAccount.saveOrder(cart.map(({ product, quantity }) => ({ productId: product.id, name: productName(product), reference: product.reference, quantity, unitPrice: tierPrice(product, quantity) })), total);
+      const order = await localAccount.saveOrder(cart.map(({ product, quantity, priceTier }) => ({ productId: product.id, name: productName(product), reference: product.reference, quantity, unitPrice: unitPrice(product, quantity, priceTier), priceTier })), total);
       setCart([]); setCartOpen(false); setOrderNotice(`Pedido ${order.id} guardado correctamente.`);
     } catch (error) {
       setOrderNotice(error instanceof Error ? error.message : "No se pudo confirmar el pedido.");
@@ -107,7 +111,7 @@ export function Storefront() {
     window.setTimeout(() => setOrderNotice(""), 3500);
   };
   const whatsappUrl = useMemo(() => {
-    const lines = cart.map(({ product, quantity }) => `• ${quantity} x ${productName(product)}${product.reference ? ` (${product.reference})` : ""} — ${money(tierPrice(product, quantity))} c/u`);
+    const lines = cart.map(({ product, quantity, priceTier }) => `• ${quantity} x ${productName(product)}${product.reference ? ` (${product.reference})` : ""} — ${money(unitPrice(product, quantity, priceTier))} c/u`);
     const message = encodeURIComponent(`Hola FLYCDI, deseo confirmar este pedido mayorista:\n\n${lines.join("\n")}\n\nTotal estimado: ${money(total)}`);
     const number = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim();
     return `https://wa.me/${number || ""}?text=${message}`;
@@ -161,7 +165,7 @@ export function Storefront() {
             </form>
             <div className="section-heading"><div><p className="section-index">CATÁLOGO / 01</p><h2>Inventario para tu taller</h2></div><p>{filtered.length} {filtered.length === 1 ? "referencia encontrada" : "referencias encontradas"}</p></div>
             <div className="products">
-              {filtered.slice(0, visible).map((product) => <ProductCard key={product.id} product={product} available={isProductAvailable(inventory, product.id)} canOrder={canPlaceOrders} onAdd={() => addToCart(product)} />)}
+              {filtered.slice(0, visible).map((product) => <ProductCard key={product.id} product={product} available={isProductAvailable(inventory, product.id)} canOrder={canPlaceOrders} assignedPriceTier={assignedPriceTier} onAdd={() => addToCart(product)} />)}
             </div>
             {!products.length && <div className="empty-state">El catálogo todavía no tiene productos cargados.</div>}
             {products.length > 0 && !filtered.length && <div className="empty-state">No encontramos piezas con esos filtros. Prueba otro modelo, tipo o referencia.</div>}
@@ -178,7 +182,7 @@ export function Storefront() {
 
       <aside className={`cart-drawer ${cartOpen ? "open" : ""}`} aria-hidden={!cartOpen}>
         <div className="drawer-head"><div><small>PEDIDO MAYORISTA</small><h2>Tu cotización</h2></div><button aria-label="Cerrar" onClick={() => setCartOpen(false)}><X /></button></div>
-        <div className="cart-items">{!cart.length ? <p className="cart-empty">Agrega piezas del catálogo para comenzar.</p> : cart.map(({ product, quantity }) => <article className="cart-item" key={product.id}><div><h3>{productName(product)}</h3><button onClick={() => setCart((current) => current.filter((line) => line.product.id !== product.id))}>Quitar</button></div><div className="qty-row"><div className="qty-control"><button aria-label={`Restar una unidad de ${productName(product)}`} onClick={() => updateQuantity(product.id, -1)}><Minus /></button><input aria-label={`Cantidad de ${productName(product)}`} type="number" inputMode="numeric" min={1} step={1} value={quantity} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setQuantity(product.id, event.target.value)} /><button aria-label={`Sumar una unidad de ${productName(product)}`} onClick={() => updateQuantity(product.id, 1)}><Plus /></button></div><strong>{money(tierPrice(product, quantity) * quantity)}</strong></div></article>)}</div>
+        <div className="cart-items">{!cart.length ? <p className="cart-empty">Agrega piezas del catálogo para comenzar.</p> : cart.map(({ product, quantity, priceTier }) => <article className="cart-item" key={product.id}><div><h3>{productName(product)}</h3><small>{priceTier ? `Precio ${priceTier} asignado · ${money(priceForTier(product, priceTier))} c/u` : `${money(tierPrice(product, quantity))} c/u`}</small><button onClick={() => setCart((current) => current.filter((line) => line.product.id !== product.id))}>Quitar</button></div><div className="qty-row"><div className="qty-control"><button aria-label={`Restar una unidad de ${productName(product)}`} onClick={() => updateQuantity(product.id, -1)}><Minus /></button><input aria-label={`Cantidad de ${productName(product)}`} type="number" inputMode="numeric" min={1} step={1} value={quantity} onFocus={(event) => event.currentTarget.select()} onChange={(event) => setQuantity(product.id, event.target.value)} /><button aria-label={`Sumar una unidad de ${productName(product)}`} onClick={() => updateQuantity(product.id, 1)}><Plus /></button></div><strong>{money(unitPrice(product, quantity, priceTier) * quantity)}</strong></div></article>)}</div>
         <div className="drawer-total"><span>Total estimado</span><strong>{money(total)}</strong><small>La disponibilidad se valida al confirmar el pedido.</small><button className="submit-order" disabled={!cart.length} onClick={confirmOrder}>{localAccount.account ? "Confirmar pedido" : "Iniciar sesión para pedir"}</button><a className={cart.length ? "cart-whatsapp" : "cart-whatsapp disabled"} href={cart.length ? whatsappUrl : undefined} target="_blank" rel="noreferrer">Consultar por WhatsApp</a></div>
       </aside>
       <AccountDrawer open={accountOpen} account={localAccount.account} orders={localAccount.orders} onClose={() => setAccountOpen(false)} onRegister={localAccount.register} onLogin={localAccount.login} onLogout={localAccount.logout} onRefreshOrders={localAccount.refreshOrders} />
@@ -190,7 +194,7 @@ export function Storefront() {
   );
 }
 
-function ProductCard({ product, available, canOrder, onAdd }: { product: Product; available: boolean; canOrder: boolean; onAdd: () => void }) {
+function ProductCard({ product, available, canOrder, assignedPriceTier, onAdd }: { product: Product; available: boolean; canOrder: boolean; assignedPriceTier: PriceTier | null; onAdd: () => void }) {
   const buttonLabel = !canOrder ? "Solo para clientes técnicos" : available ? "Agregar al pedido" : "No disponible";
-  return <article className="product-card"><div className="product-image"><Image src={imageByCategory[product.category]} alt={productName(product)} width={420} height={330} /></div><div className="product-info"><div className={`stock ${available ? "available" : "unavailable"}`}><i /> {available ? "Disponible" : "No disponible"}</div><h3>{productName(product)}</h3><p className="spec">{[product.productType, product.variant].filter(Boolean).join(" · ")}</p><p className="sku">{product.reference ? `Referencia: ${product.reference}` : "Referencia no indicada"}</p><div className="price"><strong>{money(product.price1)}</strong><span>/ unidad</span></div><div className="tiers"><span>1–9 <b>{money(product.price1)}</b></span><span>10–49 <b>{money(product.price2)}</b></span><span>50+ <b>{money(product.price3)}</b></span></div><button className="add-button" disabled={!canOrder || !available} onClick={onAdd}>{buttonLabel}{canOrder && available ? <Plus /> : null}</button></div></article>;
+  return <article className="product-card"><div className="product-image"><Image src={imageByCategory[product.category]} alt={productName(product)} width={420} height={330} /></div><div className="product-info"><div className={`stock ${available ? "available" : "unavailable"}`}><i /> {available ? "Disponible" : "No disponible"}</div><h3>{productName(product)}</h3><p className="spec">{[product.productType, product.variant].filter(Boolean).join(" · ")}</p><p className="sku">{product.reference ? `Referencia: ${product.reference}` : "Referencia no indicada"}</p><div className="price"><strong>{money(assignedPriceTier ? priceForTier(product, assignedPriceTier) : product.price1)}</strong><span>{assignedPriceTier ? `Precio ${assignedPriceTier} asignado` : "/ unidad"}</span></div>{assignedPriceTier ? <div className="tiers"><span>Este es tu precio exclusivo</span></div> : <div className="tiers"><span>1–9 <b>{money(product.price1)}</b></span><span>10–49 <b>{money(product.price2)}</b></span><span>50+ <b>{money(product.price3)}</b></span></div>}<button className="add-button" disabled={!canOrder || !available} onClick={onAdd}>{buttonLabel}{canOrder && available ? <Plus /> : null}</button></div></article>;
 }

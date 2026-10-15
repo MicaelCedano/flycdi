@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useLocalAccount } from "@/components/account/useLocalAccount";
+import type { PriceTier } from "@/lib/catalog";
 
 type TechnicianProfile = {
   id: string;
@@ -13,6 +14,7 @@ type TechnicianProfile = {
   phone: string;
   created_at: string;
   approved: boolean;
+  price_tier: PriceTier | null;
 };
 
 type TechnicianView = "no-access" | "active";
@@ -32,7 +34,7 @@ export default function RegisteredTechniciansPage() {
     setLoading(true);
     const { data, error: queryError } = await supabase
       .from("profiles")
-      .select("id, username, name, shop_name, phone, created_at, approved")
+      .select("id, username, name, shop_name, phone, created_at, approved, price_tier")
       .eq("role", "technician")
       .order("created_at", { ascending: false });
     if (queryError) setError("No pudimos cargar la lista de técnicos.");
@@ -88,13 +90,40 @@ export default function RegisteredTechniciansPage() {
     }
   }
 
+  async function setPriceTier(profile: TechnicianProfile, value: string) {
+    const priceTier = value ? Number(value) as PriceTier : null;
+    setBusyId(profile.id);
+    setError("");
+    setNotice("");
+    try {
+      const { data, error: updateError } = await supabase
+        .from("profiles")
+        .update({ price_tier: priceTier })
+        .eq("id", profile.id)
+        .select("id, price_tier")
+        .maybeSingle();
+      if (updateError || !data) {
+        setError(`No pudimos guardar el precio de ${profile.name}. Actualiza la lista e inténtalo de nuevo.`);
+        return;
+      }
+      setTechnicians((rows) => rows.map((row) => row.id === profile.id ? { ...row, price_tier: data.price_tier as PriceTier | null } : row));
+      setNotice(priceTier
+        ? `Precio ${priceTier} asignado exclusivamente a ${profile.name}.`
+        : `Se restauraron los precios por volumen para ${profile.name}.`);
+    } catch {
+      setError(`No pudimos guardar el precio de ${profile.name}. Inténtalo de nuevo.`);
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   if (!ready) return <main className="admin-shell"><div className="catalog-loading" aria-label="Comprobando acceso" /></main>;
   if (!account || account.role !== "admin") return <main className="admin-shell admin-locked"><div className="catalog-lock-icon" /><p>ACCESO RESTRINGIDO</p><h1>Inicia sesión como administrador</h1><Link href="/">Ir a la tienda</Link></main>;
 
   return (
     <main className="admin-shell">
       <header className="admin-header">
-        <div><p>FLYCDI / ADMINISTRACIÓN</p><h1>Técnicos registrados</h1><span className="admin-subtitle">Revisa solicitudes, administra accesos y conserva el historial de cada cuenta.</span></div>
+        <div><p>FLYCDI / ADMINISTRACIÓN</p><h1>Técnicos registrados</h1><span className="admin-subtitle">Administra accesos y asigna a cada técnico su nivel de precio exclusivo.</span></div>
         <div className="admin-header-actions"><Link href="/admin">Volver al catálogo</Link><Link href="/">Ver tienda</Link></div>
       </header>
       {error ? <p className="auth-error" role="alert">{error}</p> : null}
@@ -113,7 +142,17 @@ export default function RegisteredTechniciansPage() {
           <div className="pending-technicians" role="tabpanel">
             {visibleTechnicians.map((profile) => <article className="pending-technician" key={profile.id}>
               <div><span>@{profile.username}</span><h2>{profile.name}</h2><p>{profile.shop_name || "Taller sin nombre"}</p><p>{profile.phone || "Sin WhatsApp"}</p><small>Registro: {new Intl.DateTimeFormat("es-DO", { dateStyle: "medium", timeStyle: "short" }).format(new Date(profile.created_at))}</small></div>
-              <button className={profile.approved ? "technician-disable" : "primary"} disabled={busyId === profile.id} onClick={() => void setApproval(profile, !profile.approved)}>{busyId === profile.id ? "Guardando…" : profile.approved ? "Suspender acceso" : "Habilitar cuenta"}</button>
+              <div className="technician-actions">
+                <label className="technician-price-field">Precio asignado exclusivamente
+                  <select aria-label={`Precio asignado a ${profile.name}`} value={profile.price_tier ?? ""} disabled={busyId === profile.id} onChange={(event) => void setPriceTier(profile, event.target.value)}>
+                    <option value="">Precios por volumen</option>
+                    <option value="1">Precio 1 · 1–9 unidades</option>
+                    <option value="2">Precio 2 · 10–49 unidades</option>
+                    <option value="3">Precio 3 · 50+ unidades (más bajo)</option>
+                  </select>
+                </label>
+                <button className={profile.approved ? "technician-disable" : "primary"} disabled={busyId === profile.id} onClick={() => void setApproval(profile, !profile.approved)}>{busyId === profile.id ? "Guardando…" : profile.approved ? "Suspender acceso" : "Habilitar cuenta"}</button>
+              </div>
             </article>)}
           </div>
         ) : <section className="pending-empty"><h2>{search ? "No hay coincidencias" : view === "no-access" ? "No hay técnicos sin acceso" : "No hay técnicos habilitados"}</h2><p>{search ? "Prueba con otro nombre, taller o WhatsApp." : view === "no-access" ? "Las cuentas nuevas o suspendidas aparecerán aquí." : "Los técnicos habilitados aparecerán aquí."}</p></section>}

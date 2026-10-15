@@ -12,8 +12,13 @@ export type Product = {
   available?: boolean;
 };
 
+export type PriceTier = 1 | 2 | 3;
+
 export const tierPrice = (product: Product, quantity: number) =>
   quantity >= 50 ? product.price3 : quantity >= 10 ? product.price2 : product.price1;
+
+export const priceForTier = (product: Product, tier: PriceTier) =>
+  tier === 1 ? product.price1 : tier === 2 ? product.price2 : product.price3;
 
 export const money = (value: number) =>
   new Intl.NumberFormat("es-DO", {

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+import type { PriceTier } from "@/lib/catalog";
 import { createClient } from "@/lib/supabase/client";
 import {
   statusFromDatabase,
@@ -10,12 +11,12 @@ import {
   type TechnicianOrder,
 } from "@/lib/account";
 
-type ProfileRow = { id: string; username: string; role: AccountProfile["role"]; approved: boolean; name: string; shop_name: string; phone: string; created_at: string };
+type ProfileRow = { id: string; username: string; role: AccountProfile["role"]; approved: boolean; name: string; shop_name: string; phone: string; created_at: string; price_tier: PriceTier | null };
 type ItemRow = { product_id: string | null; product_name: string; reference: string; quantity: number; unit_price: number | string; price_tier: 1 | 2 | 3 | null };
 type OrderRow = { id: string; order_number: string; customer_id: string; status: string; total: number | string; created_at: string; updated_at: string; order_items: ItemRow[] };
 
 function mapAccount(user: User, profile: ProfileRow): AccountProfile {
-  return { id: profile.id, username: profile.username, role: profile.role, name: profile.name, shopName: profile.shop_name, phone: profile.phone, email: user.email ?? "", createdAt: profile.created_at };
+  return { id: profile.id, username: profile.username, role: profile.role, name: profile.name, shopName: profile.shop_name, phone: profile.phone, email: user.email ?? "", createdAt: profile.created_at, priceTier: profile.price_tier };
 }
 
 function mapOrder(row: OrderRow): TechnicianOrder {
@@ -49,7 +50,7 @@ export function useLocalAccount() {
 
   const loadAccount = useCallback(async (user: User | null) => {
     if (!user) { setAccount(null); setOrders([]); setReady(true); return; }
-    const { data, error } = await supabase.from("profiles").select("id, username, role, approved, name, shop_name, phone, created_at").eq("id", user.id).single();
+    const { data, error } = await supabase.from("profiles").select("id, username, role, approved, name, shop_name, phone, created_at, price_tier").eq("id", user.id).single();
     if (error) throw error;
     const row = data as ProfileRow;
     if (!row.approved) {

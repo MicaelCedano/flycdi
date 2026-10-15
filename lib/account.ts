@@ -1,3 +1,5 @@
+import type { PriceTier } from "@/lib/catalog";
+
 export type AccountRole = "admin" | "seller" | "technician";
 
 export type AccountProfile = {
@@ -9,6 +11,7 @@ export type AccountProfile = {
   phone: string;
   email: string;
   createdAt: string;
+  priceTier: PriceTier | null;
 };
 
 export type OrderItem = {
@@ -17,7 +20,7 @@ export type OrderItem = {
   reference: string;
   quantity: number;
   unitPrice: number;
-  priceTier?: 1 | 2 | 3 | null;
+  priceTier?: PriceTier | null;
 };
 
 export const ORDER_STATUS_OPTIONS = [

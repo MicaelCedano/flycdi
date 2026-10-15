@@ -4,10 +4,9 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CheckCircle2, Plus, Trash2 } from "lucide-react";
 import { useLocalCatalog } from "@/components/catalog/useLocalCatalog";
 import { createClient } from "@/lib/supabase/client";
-import { money, productName, type Product } from "@/lib/catalog";
+import { money, productName, type PriceTier, type Product } from "@/lib/catalog";
 
-type TechnicianOption = { id: string; name: string; shop_name: string; phone: string };
-type PriceTier = 1 | 2 | 3;
+type TechnicianOption = { id: string; name: string; shop_name: string; phone: string; price_tier: PriceTier | null };
 type DraftLine = { product: Product; quantity: number; priceTier: PriceTier };
 
 const tierPrice = (product: Product, tier: PriceTier) =>
@@ -29,7 +28,7 @@ export function StaffOrderForm({ onCreated }: { onCreated: (orderNumber: string)
     let active = true;
     createClient()
       .from("profiles")
-      .select("id, name, shop_name, phone")
+      .select("id, name, shop_name, phone, price_tier")
       .eq("role", "technician")
       .eq("approved", true)
       .order("name", { ascending: true })
@@ -46,15 +45,16 @@ export function StaffOrderForm({ onCreated }: { onCreated: (orderNumber: string)
   const selectedProduct = availableProducts.find((product) => product.id === productId) ?? null;
   const total = useMemo(() => lines.reduce((sum, line) => sum + tierPrice(line.product, line.priceTier) * line.quantity, 0), [lines]);
   const selectedTechnician = technicians.find((technician) => technician.id === customerId);
+  const effectivePriceTier = selectedTechnician?.price_tier ?? priceTier;
 
   function addLine() {
     if (!selectedProduct || !Number.isSafeInteger(quantity) || quantity < 1) return;
     setError("");
     setLines((current) => {
       const existingIndex = current.findIndex((line) => line.product.id === selectedProduct.id);
-      if (existingIndex === -1) return [...current, { product: selectedProduct, quantity, priceTier }];
+      if (existingIndex === -1) return [...current, { product: selectedProduct, quantity, priceTier: effectivePriceTier }];
       return current.map((line, index) => index === existingIndex
-        ? { ...line, quantity: line.quantity + quantity, priceTier }
+        ? { ...line, quantity: line.quantity + quantity, priceTier: effectivePriceTier }
         : line);
     });
     setProductId("");
@@ -91,12 +91,12 @@ export function StaffOrderForm({ onCreated }: { onCreated: (orderNumber: string)
 
   return <section className="staff-order-panel" aria-labelledby="staff-order-title">
     <div className="staff-order-heading">
-      <div><p className="section-index">VENTA DIRECTA</p><h2 id="staff-order-title">Registrar pedido para un técnico</h2><p>Elige el precio de cada producto. La cantidad no cambia el nivel seleccionado.</p></div>
+      <div><p className="section-index">VENTA DIRECTA</p><h2 id="staff-order-title">Registrar pedido para un técnico</h2><p>{selectedTechnician?.price_tier ? `Precio ${selectedTechnician.price_tier} asignado por administración; se mantiene aunque cambie la cantidad.` : "Elige el precio de cada producto. La cantidad no cambia el nivel seleccionado."}</p></div>
     </div>
     {error ? <p className="auth-error" role="alert">{error}</p> : null}
     <form onSubmit={(event) => void submitOrder(event)}>
       <label className="staff-customer-field">Técnico registrado
-        <select required value={customerId} onChange={(event) => setCustomerId(event.target.value)} disabled={loadingTechnicians || !technicians.length}>
+        <select required value={customerId} onChange={(event) => { setCustomerId(event.target.value); setLines([]); }} disabled={loadingTechnicians || !technicians.length}>
           <option value="">{loadingTechnicians ? "Cargando técnicos…" : technicians.length ? "Selecciona una persona" : "No hay técnicos habilitados"}</option>
           {technicians.map((technician) => <option key={technician.id} value={technician.id}>{technician.name}{technician.shop_name ? ` · ${technician.shop_name}` : ""}</option>)}
         </select>
@@ -115,7 +115,7 @@ export function StaffOrderForm({ onCreated }: { onCreated: (orderNumber: string)
           <input type="number" min={1} step={1} inputMode="numeric" value={quantity} onChange={(event) => setQuantity(Number(event.target.value))} />
         </label>
         <label>Precio para esta persona
-          <select value={priceTier} onChange={(event) => setPriceTier(Number(event.target.value) as PriceTier)}>
+          <select value={effectivePriceTier} disabled={Boolean(selectedTechnician?.price_tier)} onChange={(event) => setPriceTier(Number(event.target.value) as PriceTier)}>
             <option value={1}>Precio 1 · 1–9 · {selectedProduct ? money(selectedProduct.price1) : ""}</option>
             <option value={2}>Precio 2 · 10–49 · {selectedProduct ? money(selectedProduct.price2) : ""}</option>
             <option value={3}>Precio 3 · 50+ · {selectedProduct ? money(selectedProduct.price3) : ""}</option>
@@ -128,7 +128,7 @@ export function StaffOrderForm({ onCreated }: { onCreated: (orderNumber: string)
         {!lines.length ? <p>Los productos que agregues aparecerán aquí.</p> : lines.map((line, index) => <article className="staff-order-line" key={line.product.id}>
           <div className="staff-line-product"><strong>{productName(line.product)}</strong><small>{line.product.reference || "Sin referencia"}</small></div>
           <label>Cantidad<input type="number" min={1} step={1} inputMode="numeric" value={line.quantity} onChange={(event) => updateLine(index, { quantity: Math.max(1, Number(event.target.value) || 1) })} /></label>
-          <label>Precio unitario<select value={line.priceTier} onChange={(event) => updateLine(index, { priceTier: Number(event.target.value) as PriceTier })}>
+          <label>Precio unitario<select value={line.priceTier} disabled={Boolean(selectedTechnician?.price_tier)} onChange={(event) => updateLine(index, { priceTier: Number(event.target.value) as PriceTier })}>
             <option value={1}>Precio 1 · {money(line.product.price1)}</option>
             <option value={2}>Precio 2 · {money(line.product.price2)}</option>
             <option value={3}>Precio 3 · {money(line.product.price3)}</option>
