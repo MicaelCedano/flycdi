@@ -65,6 +65,11 @@ export function Storefront() {
     setVisible(PAGE_SIZE);
     document.querySelector("#catalogo")?.scrollIntoView({ behavior: "smooth" });
   };
+  const updateSearch = (search: string) => {
+    setFilters((current) => ({ ...current, search }));
+    setApplied((current) => ({ ...current, search }));
+    setVisible(PAGE_SIZE);
+  };
   const setCategory = (category: string) => {
     const next = { ...filters, category };
     setFilters(next); setApplied(next); setVisible(PAGE_SIZE);
@@ -136,7 +141,7 @@ export function Storefront() {
             <h1>Repuestos para celulares, <span>listos para tu negocio.</span></h1>
             <p>{hasCatalogAccess ? "451 referencias entre pantallas, cámaras, flex pin y baterías, con precios especiales por volumen." : "Catálogo y precios exclusivos para técnicos registrados y talleres autorizados."}</p>
             {hasCatalogAccess ? <form className="finder" onSubmit={(event) => { event.preventDefault(); applyFilters(); }}>
-              <label className="search-field"><Search aria-hidden="true" /><input type="search" placeholder="Busca por modelo, pieza o código" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></label>
+              <label className="search-field"><Search aria-hidden="true" /><input type="search" placeholder="Busca por modelo, pieza o código" value={filters.search} onChange={(e) => updateSearch(e.target.value)} /></label>
               <div className="finder-row">
                 <label>Marca<select value={filters.brand} onChange={(e) => setFilters({ ...filters, brand: e.target.value, model: ALL })}><option>{ALL}</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label>
                 <label>Modelo<select value={filters.model} onChange={(e) => setFilters({ ...filters, model: e.target.value })}><option>{ALL}</option>{models.map((model) => <option key={model}>{model}</option>)}</select></label>
@@ -159,7 +164,7 @@ export function Storefront() {
             <div className="mobile-catalog-head"><div><span>CATÁLOGO PRIVADO</span><strong>Hola, {localAccount.account?.name.split(" ")[0]}</strong></div>{canPlaceOrders ? <button onClick={() => setCartOpen(true)}><ShoppingBag /><span>{cart.reduce((n, line) => n + line.quantity, 0)}</span></button> : null}</div>
             {catalogLoading ? <div className="catalog-loading" aria-label="Cargando inventario" /> : catalogError ? <div className="empty-state" role="alert">No se pudo conectar con el catálogo. Intenta de nuevo en unos segundos.</div> : <>
             <form className="mobile-catalog-filters" onSubmit={(event) => { event.preventDefault(); applyFilters(); }}>
-              <label className="search-field"><Search aria-hidden="true" /><input type="search" placeholder="Modelo, pieza o código" value={filters.search} onChange={(e) => setFilters({ ...filters, search: e.target.value })} /></label>
+              <label className="search-field"><Search aria-hidden="true" /><input type="search" placeholder="Modelo, pieza o código" value={filters.search} onChange={(e) => updateSearch(e.target.value)} /></label>
               <div><label>Marca<select value={filters.brand} onChange={(e) => setFilters({ ...filters, brand: e.target.value, model: ALL })}><option>{ALL}</option>{brands.map((brand) => <option key={brand}>{brand}</option>)}</select></label><label>Modelo<select value={filters.model} onChange={(e) => setFilters({ ...filters, model: e.target.value })}><option>{ALL}</option>{models.map((model) => <option key={model}>{model}</option>)}</select></label></div>
               <button className="primary" type="submit">Buscar en inventario</button>
             </form>
