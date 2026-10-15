@@ -15,6 +15,11 @@ type CartLine = { product: Product; quantity: number };
 type Filters = { search: string; brand: string; model: string; category: string };
 const ALL = "Todas";
 const PAGE_SIZE = 12;
+const normalizeSearch = (value: string) => value
+  .normalize("NFD")
+  .replace(/[\u0300-\u036f]/g, "")
+  .toLocaleLowerCase("es")
+  .trim();
 
 const imageByCategory: Record<Product["category"], string> = {
   Pantallas: "/assets/pantalla-iphone-13.png",
@@ -38,17 +43,18 @@ export function Storefront() {
   const hasCatalogAccess = localAccount.ready && Boolean(localAccount.account);
   const canPlaceOrders = localAccount.account?.role === "technician";
   const staffPath = localAccount.account?.role === "seller" ? "/ventas" : localAccount.account?.role === "admin" ? "/admin" : null;
-  const deferredSearch = useDeferredValue(applied.search.trim().toLocaleLowerCase("es"));
+  const deferredSearch = useDeferredValue(normalizeSearch(applied.search));
+  const searchTerms = useMemo(() => deferredSearch.split(/\s+/).filter(Boolean), [deferredSearch]);
 
   const brands = useMemo(() => [...new Set(products.map((p) => p.brand))].sort((a, b) => a.localeCompare(b, "es")), [products]);
   const models = useMemo(() => [...new Set(products.filter((p) => applied.brand === ALL || p.brand === applied.brand).map((p) => p.model))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })), [products, applied.brand]);
   const filtered = useMemo(() => products.filter((p) => {
-    const haystack = `${p.brand} ${p.model} ${p.productType} ${p.variant} ${p.reference}`.toLocaleLowerCase("es");
-    return (!deferredSearch || haystack.includes(deferredSearch)) &&
+    const haystack = normalizeSearch(`${p.category} ${p.brand} ${p.model} ${p.productType} ${p.variant} ${p.reference}`);
+    return searchTerms.every((term) => haystack.includes(term)) &&
       (applied.brand === ALL || p.brand === applied.brand) &&
       (applied.model === ALL || p.model === applied.model) &&
       (applied.category === ALL || p.category === applied.category);
-  }), [products, deferredSearch, applied]);
+  }), [products, searchTerms, applied]);
 
   const applyFilters = (next = filters) => {
     setApplied(next);
