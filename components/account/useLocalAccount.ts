@@ -108,8 +108,20 @@ export function useLocalAccount() {
       if (account.role !== "technician") throw new Error("Solo los clientes técnicos pueden crear pedidos.");
       const { data, error } = await supabase.rpc("place_order", { items: items.map((item) => ({ product_id: item.productId, quantity: item.quantity })) });
       if (error) throw new Error(error.message);
+      const orderNumber = String(data.order_number);
+      let notificationSent = false;
+      try {
+        const response = await fetch("/api/notifications/new-order", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ orderId: data.id }),
+        });
+        notificationSent = response.ok;
+      } catch {
+        // El pedido ya está guardado: un fallo de Telegram no debe revertirlo.
+      }
       await loadOrders(account.id);
-      return { id: String(data.order_number) };
+      return { id: orderNumber, notificationSent };
     },
   };
 }

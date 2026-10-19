@@ -109,7 +109,7 @@ export function Storefront() {
     if (!canPlaceOrders) { setOrderNotice("Solo los clientes técnicos pueden crear pedidos."); return; }
     try {
       const order = await localAccount.saveOrder(cart.map(({ product, quantity, priceTier }) => ({ productId: product.id, name: productName(product), reference: product.reference, quantity, unitPrice: unitPrice(product, quantity, priceTier), priceTier })), total);
-      setCart([]); setCartOpen(false); setOrderNotice(`Pedido ${order.id} guardado correctamente.`);
+      setCart([]); setCartOpen(false); setAccountOpen(true); setOrderNotice(`Pedido ${order.id} guardado. Ya puedes ver su estado en Seguimiento de pedidos.`);
     } catch (error) {
       setOrderNotice(error instanceof Error ? error.message : "No se pudo confirmar el pedido.");
     }
