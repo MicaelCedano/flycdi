@@ -38,7 +38,7 @@ async function replyToTestMessage(eventKey: string, payload: IncomingPayload, ur
           request = request.ilike("reference", catalogQuery.reference);
         } else if (catalogQuery.model) {
           // Broad server-side prefilter; exact model matching happens below.
-          const key = catalogQuery.model.match(/^(?:[a-z]\\s*)?\\d+|^[a-z]+/i)?.[0].replace(/\\s/g, "");
+          const key = catalogQuery.model.match(/^(?:[a-z]\s*)?\d+|^[a-z]+/i)?.[0].replace(/\s/g, "");
           if (!key || !/^[a-z0-9]+$/i.test(key)) throw new Error("Invalid catalog model");
           request = request.ilike("model", `%${key}%`);
         }
