@@ -19,7 +19,8 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: "Inbox unavailable" }, { status: 503 });
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "AI not configured" }, { status: 503 });
-  const sendEnabled = process.env.WHATSAPP_SEND_ENABLED === "true";
+  const allowedPhone = (process.env.WHATSAPP_TEST_RECIPIENT ?? "").replace(/[^0-9]/g, "");
+  const sendEnabled = process.env.WHATSAPP_SEND_ENABLED === "true" && /^\d{8,15}$/.test(allowedPhone);
   const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   if (sendEnabled && (!accessToken || !phoneId)) return NextResponse.json({ error: "Meta not configured" }, { status: 503 });
@@ -48,6 +49,7 @@ export async function POST(request: Request) {
       continue;
     }
     for (const message of messages) {
+      if (!message.from || message.from !== allowedPhone) continue;
       const question = message.type === "text" ? message.text?.body?.trim() : "";
       if (!question) continue;
       const response = await fetch("https://api.deepseek.com/chat/completions", {
@@ -66,7 +68,7 @@ export async function POST(request: Request) {
       if (!response.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
       const answer = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
       const reply = answer.choices?.[0]?.message?.content?.slice(0, 1000) || "Un asesor de FLYCDI puede ayudarte.";
-      if (sendEnabled && message.id && message.from && /^\d{8,15}$/.test(message.from)) {
+      if (sendEnabled && message.id && message.from === allowedPhone) {
         const { data: claimed } = await db.from("whatsapp_webhook_events")
           .update({ status: "processing" }).eq("id", event.id).eq("status", "pending").select("id").maybeSingle();
         if (!claimed) continue;
