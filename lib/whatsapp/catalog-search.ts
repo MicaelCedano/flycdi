@@ -1,4 +1,4 @@
-export type CatalogProduct = { category: string; brand: string; model: string; product_type: string; variant: string | null; reference: string | null; available: boolean | null };
+export type CatalogProduct = { category: string; brand: string; model: string; product_type: string; variant: string | null; reference: string | null; available: boolean | null; price_3?: number | string | null };
 export type CatalogQuery = { kind: "battery" | "screen" | "camera" | "charging" | null; model: string | null; brand: string | null; reference: string | null; variant: string | null; cameraSide: "frontal" | "trasera" | null; wantsPrice: boolean };
 
 export function normalize(value: string): string { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
@@ -64,19 +64,27 @@ export function formatCatalogResult(query: CatalogQuery, products: CatalogProduc
     ? "Encontré muchos resultados. ¿Me dices la marca y el modelo exactos para buscar mejor?"
     : "No encontré ese repuesto en el catálogo. ¿Me confirmas la marca y el modelo exactos?";
   const describe = (p: CatalogProduct) => [p.product_type, p.brand, p.model].filter(Boolean).join(" ");
-  const priceNote = query.wantsPrice ? " Para el precio, puedes consultarnos directamente." : "";
+  const formatPrice = (p: CatalogProduct): string | null => {
+    if (p.price_3 === null || p.price_3 === undefined || p.price_3 === "") return null;
+    const amount = Number(p.price_3);
+    return Number.isFinite(amount) && amount > 0 ? `RD${new Intl.NumberFormat("es-DO", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount)}` : null;
+  };
   if (products.length === 1) {
     const p = products[0];
     const availability = p.available === false ? " En el catálogo aparece como no disponible." : "";
     const ref = query.reference && p.reference ? ` (ref. ${p.reference})` : "";
-    if (query.wantsPrice) return `Sobre ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref}: por ahora no puedo confirmar el precio por aquí. Puedes consultarlo directamente con FLYCDI.`;
-    return `Encontré ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.${priceNote}`;
+    if (query.wantsPrice) {
+      const price = formatPrice(p);
+      return price ? `El precio de ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} es ${price} 😊.${availability} La existencia física hay que confirmarla antes del pedido.` : `Encontré el producto${ref}, pero no tiene un precio válido registrado. Consulta directamente con FLYCDI.`;
+    }
+    return `Encontré ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.`;
   }
   const shown = products.slice(0, 5).map(p => {
     const ref = p.reference ? ` (ref. ${p.reference})` : "";
     const variant = p.variant ? ` — ${p.variant}` : "";
     const availability = p.available === false ? " [no disponible en catálogo]" : "";
-    return `• ${describe(p)}${ref}${variant}${availability}`;
+    const price = query.wantsPrice ? ` — ${formatPrice(p) ?? "precio no registrado"}` : "";
+    return `• ${describe(p)}${ref}${variant}${price}${availability}`;
   }).join("\n");
-  return `Encontré estas opciones en nuestro catálogo 😊:\n${shown}${products.length > 5 ? "\nHay más opciones; dime cuál buscas." : ""}\nLa existencia física hay que confirmarla antes del pedido.${priceNote}`;
+  return `Encontré estas opciones en nuestro catálogo 😊:\n${shown}${products.length > 5 ? "\nHay más opciones; dime cuál buscas." : ""}\nLa existencia física hay que confirmarla antes del pedido.`;
 }
