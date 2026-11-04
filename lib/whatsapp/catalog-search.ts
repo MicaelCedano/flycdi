@@ -45,7 +45,7 @@ export function formatCatalogResult(query: CatalogQuery, products: CatalogProduc
     const p = products[0];
     const availability = p.available === false ? " En el catálogo aparece como no disponible." : "";
     const ref = query.reference && p.reference ? ` (ref. ${p.reference})` : "";
-    return `Encontré ${describe(p)}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.${priceNote}`;
+    return `Encontré ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.${priceNote}`;
   }
   const shown = products.slice(0, 5).map(p => {
     const ref = p.reference ? ` (ref. ${p.reference})` : "";
