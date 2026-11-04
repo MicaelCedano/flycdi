@@ -75,7 +75,7 @@ export function formatCatalogResult(query: CatalogQuery, products: CatalogProduc
     const ref = query.reference && p.reference ? ` (ref. ${p.reference})` : "";
     if (query.wantsPrice) {
       const price = formatPrice(p);
-      return price ? `El precio de ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} es ${price} 😊.${availability} La existencia física hay que confirmarla antes del pedido.` : `Encontré el producto${ref}, pero no tiene un precio válido registrado. Consulta directamente con FLYCDI.`;
+      return price ? `El precio de ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} es ${price} 😊.${availability} La existencia física hay que confirmarla antes del pedido.` : `Encontré ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref}, pero no tiene un precio válido registrado. Consulta directamente con FLYCDI.`;
     }
     return `Encontré ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.`;
   }
