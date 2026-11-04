@@ -1,5 +1,5 @@
 export type CatalogProduct = { category: string; brand: string; model: string; product_type: string; variant: string | null; reference: string | null; available: boolean | null };
-export type CatalogQuery = { kind: "battery" | "screen" | "camera" | "charging" | null; model: string | null; brand: string | null; reference: string | null; variant: string | null; wantsPrice: boolean };
+export type CatalogQuery = { kind: "battery" | "screen" | "camera" | "charging" | null; model: string | null; brand: string | null; reference: string | null; variant: string | null; cameraSide: "frontal" | "trasera" | null; wantsPrice: boolean };
 
 export function normalize(value: string): string { return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]/g, ""); }
 
@@ -13,7 +13,8 @@ export function parseCatalogQuestion(question: string): CatalogQuery | null {
   const model = iphone?.[1] ?? android?.[1] ?? null;
   const brand = iphone ? "iphone" : /\bsamsung\b|\bgalaxy\b/.test(text) ? "samsung" : /\bmotorola\b|\bmoto\b/.test(text) ? "motorola" : /\bxiaomi\b|\bredmi\b|\bpoco\b/.test(text) ? "xiaomi" : null;
   const variant = /\boled\b/.test(text) ? "oled" : /\blcd\b/.test(text) ? "lcd" : null;
-  return { kind, model, brand, reference, variant, wantsPrice: /\bprecio\b|\bcuanto\b|\bcosto\b|\bcuesta\b/.test(text) };
+  const cameraSide = /\bfrontal\b|\bdelantera\b|\bselfie\b/.test(text) ? "frontal" : /\btrasera\b|\bposterior\b/.test(text) ? "trasera" : null;
+  return { kind, model, brand, reference, variant, cameraSide, wantsPrice: /\bprecio\b|\bcuanto\b|\bcosto\b|\bcuesta\b/.test(text) };
 }
 
 export function searchCatalog(products: CatalogProduct[], query: CatalogQuery): CatalogProduct[] {
@@ -25,6 +26,7 @@ export function searchCatalog(products: CatalogProduct[], query: CatalogQuery): 
     if (query.kind === "battery" && !category.includes("bater")) return false;
     if (query.kind === "screen" && !category.includes("pantalla")) return false;
     if (query.kind === "camera" && !category.includes("camara")) return false;
+    if (query.kind === "camera" && query.cameraSide && !category.includes(query.cameraSide)) return false;
     if (query.kind === "charging" && !category.includes("flex") && !category.includes("carga")) return false;
     if (model && !p.model.split("/").some(part => normalize(part.replace(/^ss\s+/i, "")) === model)) return false;
     if (query.variant && !normalize(p.variant ?? "").includes(query.variant) && !normalize(p.product_type).includes(query.variant)) return false;
