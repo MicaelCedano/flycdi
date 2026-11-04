@@ -1,7 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { parseCatalogQuestion, searchCatalog, formatCatalogResult, type CatalogProduct } from "@/lib/whatsapp/catalog-search";
+import { parseCatalogQuestion, isCatalogFollowUp, resolveCatalogQuestion, searchCatalog, formatCatalogResult, type CatalogProduct } from "@/lib/whatsapp/catalog-search";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,7 +27,22 @@ async function replyToTestMessage(eventKey: string, payload: IncomingPayload, ur
     .update({ status: "processing" }).eq("event_key", eventKey).eq("status", "pending").select("id").maybeSingle();
   if (claimError || !claimed) return;
   try {
-    const catalogQuery = parseCatalogQuestion(question);
+    let catalogQuery = parseCatalogQuestion(question);
+    if (!catalogQuery && isCatalogFollowUp(question)) {
+      const since = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+      const { data: recent, error: historyError } = await db.from("whatsapp_webhook_events")
+        .select("payload").gte("received_at", since).lt("id", claimed.id)
+        .order("id", { ascending: false }).limit(100);
+      if (historyError) throw new Error("Conversation history unavailable");
+      const previous = (recent ?? []).flatMap(row => {
+        const prior = row.payload as IncomingPayload;
+        return (prior.entry ?? []).flatMap(e => (e.changes ?? []).flatMap(change =>
+          (change.value?.messages ?? []).filter(m => m.from === phone && m.type === "text" && !!m.text?.body)
+            .map(m => m.text!.body!)
+        ));
+      });
+      catalogQuery = resolveCatalogQuestion(question, previous);
+    }
     let reply: string;
     if (catalogQuery) {
       if (!catalogQuery.reference && !catalogQuery.model) {
