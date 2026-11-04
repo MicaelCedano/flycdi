@@ -34,7 +34,18 @@ function isAcknowledgment(message: string): boolean {
 export function resolveCatalogQuestion(question: string, previousMessages: string[]): CatalogQuery | null {
   const direct = parseCatalogQuestion(question);
   if (direct?.model || direct?.reference) return direct;
-  if (!direct && !isCatalogFollowUp(question)) return null;
+  if (!direct && !isCatalogFollowUp(question)) {
+    // A model-only reply can complete an immediately preceding unfinished request.
+    const modelOnly = question.length <= 60 ? parseCatalogQuestion("bateria " + question) : null;
+    const last = previousMessages.find(message => !isAcknowledgment(message));
+    const incomplete = last ? parseCatalogQuestion(last) : null;
+    if (modelOnly?.model && incomplete?.kind && !incomplete.model && !incomplete.reference &&
+        (!incomplete.brand || !modelOnly.brand || incomplete.brand === modelOnly.brand)) {
+      return { ...incomplete, model: modelOnly.model, brand: modelOnly.brand ?? incomplete.brand,
+        wantsPrice: modelOnly.wantsPrice || incomplete.wantsPrice };
+    }
+    return null;
+  }
   const priceText = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   const wantsPrice = !!direct?.wantsPrice || /\b(precio|cuesta|cuestan|costo|vale|sale)\b/.test(priceText) || (/\bcuanto\b/.test(priceText) && !/\b(quedan|queda|disponible|disponibles|hay)\b/.test(priceText));
   for (const previous of previousMessages) {
