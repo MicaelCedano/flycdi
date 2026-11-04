@@ -28,7 +28,7 @@ assert.equal(context.model, "11");
 assert.equal(context.kind, "battery");
 assert.equal(context.wantsPrice, true);
 assert.match(formatCatalogResult(context, searchCatalog(data, context), false), /batería para iPhone 11/);
-assert.match(formatCatalogResult(context, searchCatalog(data, context), false), /no puedo confirmar el precio/);
+assert.match(formatCatalogResult(context, searchCatalog(data, context), false), /no tiene un precio válido registrado/);
 assert.equal(resolveCatalogQuestion("¿Quedan?", ["qué precio tiene", "iPhone 11 bateria"]).model, "11");
 assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", ["Háblame de otra cosa", "iPhone 11 bateria"]), null);
 assert.equal(resolveCatalogQuestion("¿Qué precio tiene el Samsung A30?", ["iPhone 11 bateria"]), null);
@@ -36,3 +36,14 @@ assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", []), null);
 assert.equal(resolveCatalogQuestion("batería iphone 11 pro", ["pantalla a12"]).model, "11 pro");
 
 assert.equal(resolveCatalogQuestion("¿Cuántos quedan?", ["iPhone 11 bateria"]).wantsPrice, false);
+
+const priced = { ...data[0], price_3: 250.5 };
+assert.match(formatCatalogResult(context, [priced], false), /RD\$250[.,]5/);
+assert.doesNotMatch(formatCatalogResult(q, [priced], false), /RD\$/);
+assert.match(formatCatalogResult(context, [{...priced, price_3: 0}], false), /no tiene un precio válido registrado/);
+assert.match(formatCatalogResult(context, [{...priced, price_3: null}], false), /no tiene un precio válido registrado/);
+assert.match(formatCatalogResult(context, [{...priced, price_3: "no es precio"}], false), /no tiene un precio válido registrado/);
+const multi = formatCatalogResult(context, [priced, {...data[1], price_3: 700}], false);
+assert.match(multi, /RD\$700/);
+assert.match(multi, /FB0017/);
+assert.match(multi, /FB0018/);
