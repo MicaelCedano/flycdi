@@ -19,13 +19,17 @@ export async function POST(request: Request) {
   if (error) return NextResponse.json({ error: "Inbox unavailable" }, { status: 503 });
   const apiKey = process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return NextResponse.json({ error: "AI not configured" }, { status: 503 });
+  const sendEnabled = process.env.WHATSAPP_SEND_ENABLED === "true";
+  const accessToken = process.env.WHATSAPP_ACCESS_TOKEN;
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  if (sendEnabled && (!accessToken || !phoneId)) return NextResponse.json({ error: "Meta not configured" }, { status: 503 });
   const results: Array<{ id: number; reply: string }> = [];
   for (const event of data ?? []) {
     const { data: full } = await db.from("whatsapp_webhook_events")
       .select("payload").eq("id", event.id).maybeSingle();
     const payload = full?.payload as {
       entry?: Array<{ changes?: Array<{ value?: {
-        messages?: Array<{ type?: string; text?: { body?: string } }>
+        messages?: Array<{ id?: string; from?: string; type?: string; text?: { body?: string } }>
       } }> }>
     } | undefined;
     const messages = (payload?.entry ?? []).flatMap(entry =>
@@ -48,9 +52,26 @@ export async function POST(request: Request) {
       });
       if (!response.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
       const answer = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
-      results.push({ id: event.id, reply: answer.choices?.[0]?.message?.content?.slice(0, 1000) ?? "" });
+      const reply = answer.choices?.[0]?.message?.content?.slice(0, 1000) || "Un asesor de FLYCDI puede ayudarte.";
+      if (sendEnabled && message.id && message.from && /^\\d{8,15}$/.test(message.from)) {
+        const { data: claimed } = await db.from("whatsapp_webhook_events")
+          .update({ status: "processing" }).eq("id", event.id).eq("status", "pending").select("id").maybeSingle();
+        if (!claimed) continue;
+        const sent = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneId!)}/messages`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ messaging_product: "whatsapp", to: message.from, type: "text", text: { body: reply }, context: { message_id: message.id } }),
+          cache: "no-store"
+        });
+        await db.from("whatsapp_webhook_events").update({
+          status: sent.ok ? "processed" : "failed",
+          processed_at: sent.ok ? new Date().toISOString() : null,
+          last_error: sent.ok ? null : `Meta HTTP ${sent.status}`
+        }).eq("id", event.id);
+      }
+      results.push({ id: event.id, reply: sendEnabled ? "[sent or attempted]" : reply });
     }
   }
-  // Dry run: no messages are sent and no rows are acknowledged or modified.
-  return NextResponse.json({ pending: data?.length ?? 0, dryRun: true, results });
+  // Sending remains disabled unless WHATSAPP_SEND_ENABLED=true is explicitly configured.
+  return NextResponse.json({ pending: data?.length ?? 0, dryRun: !sendEnabled, results });
 }
