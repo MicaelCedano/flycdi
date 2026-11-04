@@ -70,6 +70,7 @@ export function formatCatalogResult(query: CatalogQuery, products: CatalogProduc
     const p = products[0];
     const availability = p.available === false ? " En el catálogo aparece como no disponible." : "";
     const ref = query.reference && p.reference ? ` (ref. ${p.reference})` : "";
+    if (query.wantsPrice) return `Sobre ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref}: por ahora no puedo confirmar el precio por aquí. Puedes consultarlo directamente con FLYCDI.`;
     return `Encontré ${p.product_type.toLocaleLowerCase("es")} para ${[p.brand, p.model].filter(Boolean).join(" ")}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.${priceNote}`;
   }
   const shown = products.slice(0, 5).map(p => {
