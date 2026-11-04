@@ -67,7 +67,7 @@ export function formatCatalogResult(query: CatalogQuery, products: CatalogProduc
   const formatPrice = (p: CatalogProduct): string | null => {
     if (p.price_3 === null || p.price_3 === undefined || p.price_3 === "") return null;
     const amount = Number(p.price_3);
-    return Number.isFinite(amount) && amount > 0 ? `RD${new Intl.NumberFormat("es-DO", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount)}` : null;
+    return Number.isFinite(amount) && amount > 0 ? `RD$${new Intl.NumberFormat("es-DO", { minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(amount)}` : null;
   };
   if (products.length === 1) {
     const p = products[0];
