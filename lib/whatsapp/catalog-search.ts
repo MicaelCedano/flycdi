@@ -18,27 +18,35 @@ export function parseCatalogQuestion(question: string): CatalogQuery | null {
 }
 
 
-// Only carry context across short, unambiguous follow-up questions.
+// Carry context only when the new message clearly refers to the earlier product.
 export function isCatalogFollowUp(question: string): boolean {
   const text = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-  if (text.length > 100 || !/\b(precio|cuesta|cuestan|cuanto|cuantos|cuantas|quedan|queda|disponible|disponibles|hay|tienen|tienes|existencia|existencias)\b/.test(text)) return false;
-  // Never apply the old product to a question mentioning another model or reference.
+  if (text.length > 100 || !/\b(precio|cuesta|cuestan|cuanto|cuantos|cuantas|quedan|queda|disponible|disponibles|hay|tienen|tienes|existencia|existencias|costo|vale|sale|stock)\b/.test(text)) return false;
   const possibleNewProduct = parseCatalogQuestion("bateria " + text);
   return !possibleNewProduct?.model && !possibleNewProduct?.reference;
 }
 
+function isAcknowledgment(message: string): boolean {
+  const text = message.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z\s]/g, "").trim();
+  return /^(gracias|muchas gracias|ok|okay|si|no|dale|bien|perfecto|entendido|esta bien|buenas|hola|buen dia|buenos dias|buenas tardes|buenas noches)$/.test(text);
+}
+
 export function resolveCatalogQuestion(question: string, previousMessages: string[]): CatalogQuery | null {
   const direct = parseCatalogQuestion(question);
-  if (direct) return direct;
-  if (!isCatalogFollowUp(question)) return null;
+  if (direct?.model || direct?.reference) return direct;
+  if (!direct && !isCatalogFollowUp(question)) return null;
   const priceText = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  const wantsPrice = /\b(precio|cuesta|cuestan|costo|vale)\b/.test(priceText) || (/\bcuanto\b/.test(priceText) && !/\b(quedan|queda|disponible|disponibles|hay)\b/.test(priceText));
+  const wantsPrice = !!direct?.wantsPrice || /\b(precio|cuesta|cuestan|costo|vale|sale)\b/.test(priceText) || (/\bcuanto\b/.test(priceText) && !/\b(quedan|queda|disponible|disponibles|hay)\b/.test(priceText));
   for (const previous of previousMessages) {
     const parsed = parseCatalogQuestion(previous);
-    if (parsed) return parsed.model || parsed.reference ? { ...parsed, wantsPrice } : null;
-    if (!isCatalogFollowUp(previous)) return null;
+    if (parsed) {
+      if (!parsed.model && !parsed.reference) return direct;
+      if (direct && (direct.kind !== parsed.kind || (direct.brand && direct.brand !== parsed.brand))) return direct;
+      return { ...parsed, wantsPrice, variant: direct?.variant ?? parsed.variant, cameraSide: direct?.cameraSide ?? parsed.cameraSide };
+    }
+    if (!isCatalogFollowUp(previous) && !isAcknowledgment(previous)) return direct;
   }
-  return null;
+  return direct;
 }
 
 export function searchCatalog(products: CatalogProduct[], query: CatalogQuery): CatalogProduct[] {
