@@ -72,8 +72,5 @@ export async function POST(request: NextRequest) {
 
   // Transport verification only. Do not acknowledge messages as processed
   // until durable storage, idempotency, and asynchronous handling are implemented.
-  return NextResponse.json(
-    { received: true },
-    { status: 200, headers: noStore },
-  );
+  return new NextResponse("Message processing not enabled", { status: 503, headers: noStore });
 }
