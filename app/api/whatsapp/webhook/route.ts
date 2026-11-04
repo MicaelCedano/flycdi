@@ -144,6 +144,8 @@ export async function POST(request: NextRequest) {
   }
 
   // Only new deliveries from the configured test number can trigger a response.
-  after(() => replyToTestMessage(eventKey, payload as IncomingPayload, url, secret));\n\n  // Reply 200 only after durable storage.
+  after(() => replyToTestMessage(eventKey, payload as IncomingPayload, url, secret));
+
+  // Reply 200 only after durable storage.
   return NextResponse.json({ received: true }, { headers: noStore });
 }
