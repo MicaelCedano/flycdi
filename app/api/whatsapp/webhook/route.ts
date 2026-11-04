@@ -48,7 +48,7 @@ async function replyToTestMessage(eventKey: string, payload: IncomingPayload, ur
       if (!catalogQuery.reference && !catalogQuery.model) {
         reply = formatCatalogResult(catalogQuery, [], false);
       } else {
-        let request = db.from("products").select("category,brand,model,product_type,variant,reference,available").eq("active", true);
+        let request = db.from("products").select("category,brand,model,product_type,variant,reference,available,price_3").eq("active", true);
         if (catalogQuery.reference) {
           request = request.ilike("reference", catalogQuery.reference);
         } else if (catalogQuery.model) {
