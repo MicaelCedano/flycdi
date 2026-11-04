@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { parseCatalogQuestion, searchCatalog, formatCatalogResult } from "../lib/whatsapp/catalog-search.ts";
+import { parseCatalogQuestion, resolveCatalogQuestion, searchCatalog, formatCatalogResult } from "../lib/whatsapp/catalog-search.ts";
 const data = [
  { category: "Baterías", brand: "iPhone", model: "11", product_type: "Batería", variant: "11IP", reference: "FB0017", available: true },
  { category: "Baterías", brand: "iPhone", model: "11Pro", product_type: "Batería", variant: "11PRO", reference: "FB0018", available: true },
@@ -22,3 +22,15 @@ assert.equal(searchCatalog([{ category: "Cámaras traseras", brand: "iPhone", mo
 
 assert.match(formatCatalogResult(parseCatalogQuestion("bateria samsung a30"), [data[2]], false), /no disponible/);
 assert.match(formatCatalogResult(q, searchCatalog(data, q), false), /existencia física/);
+
+const context = resolveCatalogQuestion("¿Qué precio tiene?", ["iPhone 11 bateria"]);
+assert.equal(context.model, "11");
+assert.equal(context.kind, "battery");
+assert.equal(context.wantsPrice, true);
+assert.match(formatCatalogResult(context, searchCatalog(data, context), false), /batería para iPhone 11/);
+assert.match(formatCatalogResult(context, searchCatalog(data, context), false), /no puedo confirmar el precio/);
+assert.equal(resolveCatalogQuestion("¿Quedan?", ["qué precio tiene", "iPhone 11 bateria"]).model, "11");
+assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", ["Háblame de otra cosa", "iPhone 11 bateria"]), null);
+assert.equal(resolveCatalogQuestion("¿Qué precio tiene el Samsung A30?", ["iPhone 11 bateria"]), null);
+assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", []), null);
+assert.equal(resolveCatalogQuestion("batería iphone 11 pro", ["pantalla a12"]).model, "11 pro");
