@@ -34,3 +34,5 @@ assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", ["Háblame de otra c
 assert.equal(resolveCatalogQuestion("¿Qué precio tiene el Samsung A30?", ["iPhone 11 bateria"]), null);
 assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", []), null);
 assert.equal(resolveCatalogQuestion("batería iphone 11 pro", ["pantalla a12"]).model, "11 pro");
+
+assert.equal(resolveCatalogQuestion("¿Cuántos quedan?", ["iPhone 11 bateria"]).wantsPrice, false);
