@@ -8,7 +8,7 @@ const data = [
 ];
 const q = parseCatalogQuestion("Quedan baterías de iPhone 11?");
 assert.equal(searchCatalog(data, q).length, 1);
-assert.match(formatCatalogResult(q, searchCatalog(data, q), false), /Batería iPhone 11/);
+assert.match(formatCatalogResult(q, searchCatalog(data, q), false), /batería para iPhone 11/);
 assert.doesNotMatch(formatCatalogResult(q, searchCatalog(data, q), false), /11Pro/);
 assert.equal(searchCatalog(data, parseCatalogQuestion("bateria iphone 11 pro"))[0].reference, "FB0018");
 assert.equal(searchCatalog(data, parseCatalogQuestion("bateria samsung a30"))[0].available, false);
