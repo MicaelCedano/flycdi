@@ -47,3 +47,15 @@ const multi = formatCatalogResult(context, [priced, {...data[1], price_3: 700}],
 assert.match(multi, /RD\$700/);
 assert.match(multi, /FB0017/);
 assert.match(multi, /FB0018/);
+
+assert.equal(resolveCatalogQuestion("¿Qué precio tiene?", ["gracias", "batería iphone 11"]).model, "11");
+assert.equal(resolveCatalogQuestion("¿Y la batería?", ["gracias", "batería iphone 11"]).model, "11");
+assert.equal(resolveCatalogQuestion("¿Y la pantalla?", ["batería iphone 11"]).model, null);
+assert.equal(resolveCatalogQuestion("¿qué precio tiene?", ["batería iphone 11 pro", "pantalla samsung a12"]).model, "11 pro");
+assert.equal(resolveCatalogQuestion("iPhone 11", ["batería"]).kind, "battery");
+assert.equal(resolveCatalogQuestion("iPhone 11", ["batería"]).model, "11");
+assert.equal(resolveCatalogQuestion("iphone 11", ["pantalla"]).kind, "screen");
+assert.equal(resolveCatalogQuestion("iphone 12", ["batería iphone 11"]), null);
+assert.equal(resolveCatalogQuestion("¿Qué cuesta?", ["quiero hablar de otra cosa", "batería iphone 11"]), null);
+assert.equal(resolveCatalogQuestion("¿Cuánto sale?", ["batería iphone 11"]).wantsPrice, true);
+assert.equal(resolveCatalogQuestion("¿Cuántos quedan?", ["batería iphone 11"]).wantsPrice, false);
