@@ -34,6 +34,19 @@ export async function POST(request: Request) {
     } | undefined;
     const messages = (payload?.entry ?? []).flatMap(entry =>
       (entry.changes ?? []).flatMap(change => change.value?.messages ?? []));
+    // Fail closed for batched messages until per-message delivery tracking is implemented.
+    if (sendEnabled && messages.length > 1) {
+      await db.from("whatsapp_webhook_events").update({
+        status: "failed", last_error: "Multiple messages in one event require individual delivery tracking"
+      }).eq("id", event.id).eq("status", "pending");
+      continue;
+    }
+    if (sendEnabled && messages.length === 0) {
+      await db.from("whatsapp_webhook_events").update({
+        status: "processed", processed_at: new Date().toISOString()
+      }).eq("id", event.id).eq("status", "pending");
+      continue;
+    }
     for (const message of messages) {
       const question = message.type === "text" ? message.text?.body?.trim() : "";
       if (!question) continue;
