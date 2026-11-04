@@ -35,11 +35,23 @@ export function searchCatalog(products: CatalogProduct[], query: CatalogQuery): 
 }
 
 export function formatCatalogResult(query: CatalogQuery, products: CatalogProduct[], truncated: boolean): string {
-  if (!query.reference && !query.model) return "¿De qué modelo exacto necesitas el repuesto? Por ejemplo: batería de iPhone 11 o pantalla Samsung A12.";
-  if (products.length === 0) return truncated ? "La búsqueda es muy amplia para confirmarla. ¿Puedes indicarme la marca y el modelo exactos?" : "No encontré una coincidencia exacta en el catálogo de FLYCDI. ¿Puedes confirmar el modelo y el tipo de repuesto?";
+  if (!query.reference && !query.model) return "¡Claro! 😊 ¿Para qué modelo necesitas el repuesto?";
+  if (products.length === 0) return truncated
+    ? "Encontré muchos resultados. ¿Me dices la marca y el modelo exactos para buscar mejor?"
+    : "No encontré ese repuesto en el catálogo. ¿Me confirmas la marca y el modelo exactos?";
+  const describe = (p: CatalogProduct) => [p.product_type, p.brand, p.model].filter(Boolean).join(" ");
+  const priceNote = query.wantsPrice ? " Para el precio, puedes consultarnos directamente." : "";
+  if (products.length === 1) {
+    const p = products[0];
+    const availability = p.available === false ? " En el catálogo aparece como no disponible." : "";
+    const ref = query.reference && p.reference ? ` (ref. ${p.reference})` : "";
+    return `Encontré ${describe(p)}${ref} en nuestro catálogo 😊.${availability} La existencia física hay que confirmarla antes del pedido.${priceNote}`;
+  }
   const shown = products.slice(0, 5).map(p => {
-    const detail = [p.product_type, p.brand, p.model].filter(Boolean).join(" ");
-    return `• ${detail}${p.reference ? ` (ref. ${p.reference})` : ""}${p.variant ? ` — ${p.variant}` : ""}: ${p.available === true ? "marcado disponible" : p.available === false ? "marcado no disponible" : "disponibilidad no indicada"}`;
+    const ref = p.reference ? ` (ref. ${p.reference})` : "";
+    const variant = p.variant ? ` — ${p.variant}` : "";
+    const availability = p.available === false ? " [no disponible en catálogo]" : "";
+    return `• ${describe(p)}${ref}${variant}${availability}`;
   }).join("\n");
-  return `En el catálogo de FLYCDI encontré:\n${shown}${products.length > 5 ? "\nHay más variantes; dime cuál necesitas." : ""}\nLa disponibilidad mostrada es la del catálogo; la cantidad y existencia física deben confirmarse.${query.wantsPrice ? " Para el precio, consulta con FLYCDI." : ""}`;
+  return `Encontré estas opciones en nuestro catálogo 😊:\n${shown}${products.length > 5 ? "\nHay más opciones; dime cuál buscas." : ""}\nLa existencia física hay que confirmarla antes del pedido.${priceNote}`;
 }
