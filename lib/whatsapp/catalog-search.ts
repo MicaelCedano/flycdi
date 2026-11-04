@@ -17,6 +17,31 @@ export function parseCatalogQuestion(question: string): CatalogQuery | null {
   return { kind, model, brand, reference, variant, cameraSide, wantsPrice: /\bprecio\b|\bcuanto\b|\bcosto\b|\bcuesta\b/.test(text) };
 }
 
+
+// Only carry context across short, unambiguous follow-up questions.
+export function isCatalogFollowUp(question: string): boolean {
+  const text = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  if (text.length > 100 || !/\b(precio|cuesta|cuestan|cuanto|cuantos|cuantas|quedan|queda|disponible|disponibles|hay|tienen|tienes|existencia|existencias)\b/.test(text)) return false;
+  // Never apply the old product to a question mentioning another model or reference.
+  const possibleNewProduct = parseCatalogQuestion("bateria " + text);
+  return !possibleNewProduct?.model && !possibleNewProduct?.reference;
+}
+
+export function resolveCatalogQuestion(question: string, previousMessages: string[]): CatalogQuery | null {
+  const direct = parseCatalogQuestion(question);
+  if (direct) return direct;
+  if (!isCatalogFollowUp(question)) return null;
+  const wantsPrice = /\b(precio|cuesta|cuestan|cuanto|cuantos|cuantas)\b/.test(
+    question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+  );
+  for (const previous of previousMessages) {
+    const parsed = parseCatalogQuestion(previous);
+    if (parsed) return parsed.model || parsed.reference ? { ...parsed, wantsPrice } : null;
+    if (!isCatalogFollowUp(previous)) return null;
+  }
+  return null;
+}
+
 export function searchCatalog(products: CatalogProduct[], query: CatalogQuery): CatalogProduct[] {
   const model = query.model ? normalize(query.model) : null;
   return products.filter(p => {
