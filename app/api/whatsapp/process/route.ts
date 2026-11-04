@@ -66,7 +66,7 @@ export async function POST(request: Request) {
       if (!response.ok) return NextResponse.json({ error: "AI unavailable" }, { status: 502 });
       const answer = await response.json() as { choices?: Array<{ message?: { content?: string } }> };
       const reply = answer.choices?.[0]?.message?.content?.slice(0, 1000) || "Un asesor de FLYCDI puede ayudarte.";
-      if (sendEnabled && message.id && message.from && /^\\d{8,15}$/.test(message.from)) {
+      if (sendEnabled && message.id && message.from && /^\d{8,15}$/.test(message.from)) {
         const { data: claimed } = await db.from("whatsapp_webhook_events")
           .update({ status: "processing" }).eq("id", event.id).eq("status", "pending").select("id").maybeSingle();
         if (!claimed) continue;
