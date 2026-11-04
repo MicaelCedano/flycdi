@@ -31,9 +31,8 @@ export function resolveCatalogQuestion(question: string, previousMessages: strin
   const direct = parseCatalogQuestion(question);
   if (direct) return direct;
   if (!isCatalogFollowUp(question)) return null;
-  const wantsPrice = /\b(precio|cuesta|cuestan|cuanto|cuantos|cuantas)\b/.test(
-    question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-  );
+  const priceText = question.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const wantsPrice = /\b(precio|cuesta|cuestan|costo|vale)\b/.test(priceText) || (/\bcuanto\b/.test(priceText) && !/\b(quedan|queda|disponible|disponibles|hay)\b/.test(priceText));
   for (const previous of previousMessages) {
     const parsed = parseCatalogQuestion(previous);
     if (parsed) return parsed.model || parsed.reference ? { ...parsed, wantsPrice } : null;
