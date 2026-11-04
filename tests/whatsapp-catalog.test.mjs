@@ -17,3 +17,5 @@ assert.equal(searchCatalog(data, parseCatalogQuestion("C1234"))[0].reference, "C
 assert.equal(searchCatalog(data, parseCatalogQuestion("pantalla a12 lcd")).length, 0);
 assert.match(formatCatalogResult(parseCatalogQuestion("tienes bateria"), data, false), /modelo exacto/);
 assert.equal(parseCatalogQuestion("Hola como estas"), null);
+
+assert.equal(searchCatalog([{ category: "Cámaras traseras", brand: "iPhone", model: "11", product_type: "Cámara trasera", variant: "", reference: "", available: true }], parseCatalogQuestion("camara frontal iphone 11")).length, 0);
