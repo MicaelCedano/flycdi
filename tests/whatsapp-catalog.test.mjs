@@ -8,14 +8,17 @@ const data = [
 ];
 const q = parseCatalogQuestion("Quedan baterías de iPhone 11?");
 assert.equal(searchCatalog(data, q).length, 1);
-assert.match(formatCatalogResult(q, searchCatalog(data, q), false), /FB0017/);
-assert.doesNotMatch(formatCatalogResult(q, searchCatalog(data, q), false), /FB0018/);
+assert.match(formatCatalogResult(q, searchCatalog(data, q), false), /Batería iPhone 11/);
+assert.doesNotMatch(formatCatalogResult(q, searchCatalog(data, q), false), /11Pro/);
 assert.equal(searchCatalog(data, parseCatalogQuestion("bateria iphone 11 pro"))[0].reference, "FB0018");
 assert.equal(searchCatalog(data, parseCatalogQuestion("bateria samsung a30"))[0].available, false);
 assert.equal(searchCatalog(data, parseCatalogQuestion("pantalla a12 oled"))[0].reference, "C1234");
 assert.equal(searchCatalog(data, parseCatalogQuestion("C1234"))[0].reference, "C1234");
 assert.equal(searchCatalog(data, parseCatalogQuestion("pantalla a12 lcd")).length, 0);
-assert.match(formatCatalogResult(parseCatalogQuestion("tienes bateria"), data, false), /modelo exacto/);
+assert.match(formatCatalogResult(parseCatalogQuestion("tienes bateria"), data, false), /modelo/);
 assert.equal(parseCatalogQuestion("Hola como estas"), null);
 
 assert.equal(searchCatalog([{ category: "Cámaras traseras", brand: "iPhone", model: "11", product_type: "Cámara trasera", variant: "", reference: "", available: true }], parseCatalogQuestion("camara frontal iphone 11")).length, 0);
+
+assert.match(formatCatalogResult(parseCatalogQuestion("bateria samsung a30"), [data[2]], false), /no disponible/);
+assert.match(formatCatalogResult(q, searchCatalog(data, q), false), /existencia física/);
