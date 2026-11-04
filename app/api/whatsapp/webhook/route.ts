@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 import { after, NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { parseCatalogQuestion, searchCatalog, formatCatalogResult, type CatalogProduct } from "@/lib/whatsapp/catalog-search";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,19 +27,42 @@ async function replyToTestMessage(eventKey: string, payload: IncomingPayload, ur
     .update({ status: "processing" }).eq("event_key", eventKey).eq("status", "pending").select("id").maybeSingle();
   if (claimError || !claimed) return;
   try {
-    const ai = await fetch("https://api.deepseek.com/chat/completions", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "deepseek-chat", max_tokens: 180, messages: [
-        { role: "system", content: "Eres el asistente de prueba de FLYCDI. Responde brevemente en español. No inventes precios, existencias ni pedidos. No reveles precios privados. Ofrece confirmación por un asesor humano." },
-        { role: "user", content: question.slice(0, 1200) }
-      ] }),
-      signal: AbortSignal.timeout(30000), cache: "no-store"
-    });
-    if (!ai.ok) throw new Error(`AI HTTP ${ai.status}`);
-    const result = await ai.json() as { choices?: Array<{ message?: { content?: string } }> };
-    const reply = result.choices?.[0]?.message?.content?.trim().slice(0, 1000);
-    if (!reply) throw new Error("AI returned an empty response");
+    const catalogQuery = parseCatalogQuestion(question);
+    let reply: string;
+    if (catalogQuery) {
+      if (!catalogQuery.reference && !catalogQuery.model) {
+        reply = formatCatalogResult(catalogQuery, [], false);
+      } else {
+        let request = db.from("products").select("category,brand,model,product_type,variant,reference,available").eq("active", true);
+        if (catalogQuery.reference) {
+          request = request.ilike("reference", catalogQuery.reference);
+        } else if (catalogQuery.model) {
+          // Broad server-side prefilter; exact model matching happens below.
+          const key = catalogQuery.model.match(/^(?:[a-z]\\s*)?\\d+|^[a-z]+/i)?.[0].replace(/\\s/g, "");
+          if (!key || !/^[a-z0-9]+$/i.test(key)) throw new Error("Invalid catalog model");
+          request = request.ilike("model", `%${key}%`);
+        }
+        const { data: rows, error: catalogError } = await request.limit(501);
+        if (catalogError) throw new Error("Catalog unavailable");
+        const truncated = (rows?.length ?? 0) > 500;
+        const matches = searchCatalog((rows ?? []).slice(0, 500) as CatalogProduct[], catalogQuery);
+        reply = formatCatalogResult(catalogQuery, matches, truncated);
+      }
+    } else {
+      const ai = await fetch("https://api.deepseek.com/chat/completions", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ model: "deepseek-chat", max_tokens: 180, messages: [
+          { role: "system", content: "Eres el asistente de prueba de FLYCDI. Responde brevemente en español. No inventes productos, precios, existencias ni pedidos. No reveles precios privados. Si preguntan por un repuesto, pide marca, modelo y tipo. No prometas transferir a un asesor." },
+          { role: "user", content: question.slice(0, 1200) }
+        ] }),
+        signal: AbortSignal.timeout(30000), cache: "no-store"
+      });
+      if (!ai.ok) throw new Error(`AI HTTP ${ai.status}`);
+      const result = await ai.json() as { choices?: Array<{ message?: { content?: string } }> };
+      reply = result.choices?.[0]?.message?.content?.trim().slice(0, 1000) || "";
+      if (!reply) throw new Error("AI returned an empty response");
+    }
     const sent = await fetch(`https://graph.facebook.com/v23.0/${encodeURIComponent(phoneId)}/messages`, {
       method: "POST",
       headers: { Authorization: `Bearer ${metaToken}`, "Content-Type": "application/json" },
