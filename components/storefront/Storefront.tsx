@@ -50,15 +50,16 @@ export function Storefront() {
   const deferredSearch = useDeferredValue(normalizeSearch(applied.search));
   const searchTerms = useMemo(() => deferredSearch.split(/\s+/).filter(Boolean), [deferredSearch]);
 
-  const brands = useMemo(() => [...new Set(products.map((p) => p.brand))].sort((a, b) => a.localeCompare(b, "es")), [products]);
-  const models = useMemo(() => [...new Set(products.filter((p) => applied.brand === ALL || p.brand === applied.brand).map((p) => p.model))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })), [products, applied.brand]);
-  const filtered = useMemo(() => products.filter((p) => {
+  const availableProducts = useMemo(() => products.filter((p) => p.available !== false), [products]);
+  const brands = useMemo(() => [...new Set(availableProducts.map((p) => p.brand))].sort((a, b) => a.localeCompare(b, "es")), [availableProducts]);
+  const models = useMemo(() => [...new Set(availableProducts.filter((p) => applied.brand === ALL || p.brand === applied.brand).map((p) => p.model))].sort((a, b) => a.localeCompare(b, "es", { numeric: true })), [availableProducts, applied.brand]);
+  const filtered = useMemo(() => availableProducts.filter((p) => {
     const haystack = normalizeSearch(`${p.category} ${p.brand} ${p.model} ${p.productType} ${p.variant} ${p.reference}`);
     return searchTerms.every((term) => haystack.includes(term)) &&
       (applied.brand === ALL || p.brand === applied.brand) &&
       (applied.model === ALL || p.model === applied.model) &&
       (applied.category === ALL || p.category === applied.category);
-  }), [products, searchTerms, applied]);
+  }), [availableProducts, searchTerms, applied]);
 
   const applyFilters = (next = filters) => {
     setApplied(next);
